@@ -8,28 +8,68 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+
+	"github.com/gorilla/handlers"
+	"github.com/reportportal/commons-go/commons"
+	"github.com/reportportal/commons-go/conf"
+	"github.com/reportportal/commons-go/server"
+	"goji.io"
+	"goji.io/pat"
 )
 
 func main() {
-	if len(os.Args) > 1 {
-		name := os.Args[1]
-		recreateIndex(name)
+	defaults := map[string]interface{}{
+		"AppName":     "analyzer",
+		"Registry":    nil,
+		"Server.Port": 9000,
 	}
-}
 
-// {
-//   "error" : {
-//     "root_cause" : [
-//       {
-//         "type" : "not_x_content_exception",
-//         "reason" : "Compressor detection can only be called on some xcontent bytes or compressed xcontent bytes"
-//       }
-//     ],
-//     "type" : "not_x_content_exception",
-//     "reason" : "Compressor detection can only be called on some xcontent bytes or compressed xcontent bytes"
-//   },
-//   "status" : 500
-// }
+	rpConf := conf.LoadConfig("", defaults)
+
+	info := commons.GetBuildInfo()
+	info.Name = "Service Analyzer"
+
+	srv := server.New(rpConf, info)
+
+	srv.AddRoute(func(router *goji.Mux) {
+		router.Use(func(next http.Handler) http.Handler {
+			return handlers.LoggingHandler(os.Stdout, next)
+		})
+
+		router.HandleFunc(pat.Get("/"), func(w http.ResponseWriter, rq *http.Request) {
+			commons.WriteJSON(http.StatusOK, "It works!", w)
+		})
+
+		router.HandleFunc(pat.Post("/index/:project"), func(w http.ResponseWriter, rq *http.Request) {
+			project := pat.Param(rq, "project")
+
+			recreateIndex(project, false)
+
+			defer rq.Body.Close()
+
+			rqBody, err := ioutil.ReadAll(rq.Body)
+			if err != nil {
+				commons.WriteJSON(http.StatusBadRequest, err, w)
+			} else {
+				launch := &Launch{}
+				err = json.Unmarshal(rqBody, launch)
+				if err != nil {
+					commons.WriteJSON(http.StatusBadRequest, err, w)
+				} else {
+					esRs, err := indexLogs(project, launch)
+					if err != nil {
+						commons.WriteJSON(http.StatusInternalServerError, err, w)
+					} else {
+						commons.WriteJSON(http.StatusOK, esRs, w)
+					}
+
+				}
+			}
+		})
+	})
+
+	srv.StartServer()
+}
 
 // ESErrorCause struct
 type ESErrorCause struct {
@@ -61,7 +101,7 @@ type Log struct {
 // TestItem struct
 type TestItem struct {
 	TestItemID string `json:"testItemId"`
-	IssueType  int    `json:"issueType"`
+	IssueType  string `json:"issueType"`
 	Logs       []Log  `json:"logs"`
 }
 
@@ -80,19 +120,21 @@ func (rs *ESResponse) String() string {
 	return fmt.Sprintf("%v", string(s))
 }
 
-func recreateIndex(name string) {
+func recreateIndex(name string, force bool) {
 	exists, err := indexExists(name)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	if exists {
+	if exists && force {
 		dRs, err := deleteIndex(name)
 		if err != nil {
 			fmt.Printf("Delete index error: %v\n", err)
 			return
 		}
 		fmt.Printf("Delete index response: %v\n", dRs)
+	} else {
+		return
 	}
 	cRs, err := createIndex(name)
 	if err != nil {
@@ -151,46 +193,45 @@ func createIndex(name string) (*ESResponse, error) {
 	return sendRequest("PUT", url, body)
 }
 
-func indexLogs(launch Launch) {
-	indexName := ""
+func indexLogs(name string, launch *Launch) (*ESResponse, error) {
+	url := "http://localhost:9200/_bulk"
+
 	indexType := "log"
 
-	bodies := make([]interface{}, 100)
-
-	i := 0
+	var bodies []interface{}
 
 	for _, ti := range launch.TestItems {
 		for _, l := range ti.Logs {
 
 			op := map[string]interface{}{
 				"index": map[string]interface{}{
-					"_index": indexName,
+					"_index": name,
 					"_type":  indexType,
 					"_id":    l.LogID,
 				},
 			}
 
-			bodies[i] = op
-
-			i++
+			bodies = append(bodies, op)
 
 			body := map[string]interface{}{
 				"launch_name": launch.LaunchName,
 				"test_item":   ti.TestItemID,
 				"issue_type":  ti.IssueType,
 				"log_level":   l.LogLevel,
+				"message":     l.Message,
 			}
 
-			bodies[i] = body
-
-			i++
+			bodies = append(bodies, body)
 		}
 	}
+
+	return sendRequest("PUT", url, bodies...)
 }
 
 func sendRequest(method, url string, bodies ...interface{}) (*ESResponse, error) {
 	var rdr io.Reader
 
+	nl := []byte("\n")
 	if len(bodies) > 0 {
 		buff := bytes.NewBuffer([]byte{})
 		for _, body := range bodies {
@@ -199,6 +240,7 @@ func sendRequest(method, url string, bodies ...interface{}) (*ESResponse, error)
 				return nil, err
 			}
 			buff.Write(rqBody)
+			buff.Write(nl)
 		}
 		rdr = buff
 	}
@@ -229,62 +271,3 @@ func sendRequest(method, url string, bodies ...interface{}) (*ESResponse, error)
 
 	return umRs, nil
 }
-
-// {
-//   "size": 1,
-//   "query": {
-//     "bool": {
-//       "must_not": {
-//         "wildcard":  { "issue_type": "TI*" }
-//       },
-//       "must": [
-//         {
-//           "term": { "log_level": 40000 }
-//         },
-//         {
-//           "exists": { "field": "issue_type" }
-//         },
-//         {
-//           "more_like_this": {
-//             "fields": ["message"],
-//             "like": "xxx",
-//             "minimum_should_match" : "90%"
-//           }
-//         }
-//       ],
-//       "should": {
-//         "term": {
-//           "launch_name": {
-//             "value": "xxx",
-//             "boost": 2.0
-//           }
-//         }
-//       }
-//     }
-//   }
-// }
-
-// {
-//   "mappings": {
-//     "log": {
-//       "properties": {
-//         "test_item": {
-//           "type": "keyword"
-//         },
-//         "issue_type": {
-//           "type": "keyword"
-//         },
-//         "message": {
-//           "type":     "text",
-//           "analyzer": "standard"
-//         },
-//         "log_level": {
-//           "type": "integer"
-//         },
-//         "launch_name": {
-//           "type": "keyword"
-//         }
-//       }
-//     }
-//   }
-// }

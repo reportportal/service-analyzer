@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 
 	"github.com/gorilla/handlers"
 	"github.com/reportportal/commons-go/commons"
@@ -46,9 +47,10 @@ type Launch struct {
 	LaunchID   string `json:"launchId"`
 	LaunchName string `json:"launchName"`
 	TestItems  []struct {
-		TestItemID string `json:"testItemId"`
-		IssueType  string `json:"issueType"`
-		Logs       []struct {
+		TestItemID        string `json:"testItemId"`
+		IssueType         string `json:"issueType"`
+		OriginalIssueType string `json:"originalIssueType"`
+		Logs              []struct {
 			LogID    string `json:"logId"`
 			LogLevel int    `json:"logLevel"`
 			Message  string `json:"message"`
@@ -116,12 +118,7 @@ func main() {
 		})
 
 		router.HandleFunc(pat.Get("/"), func(w http.ResponseWriter, rq *http.Request) {
-			indicies, err := c.ListIndices()
-			if err != nil {
-				commons.WriteJSON(http.StatusInternalServerError, "Unable to list indices", w)
-			} else {
-				commons.WriteJSON(http.StatusOK, indicies, w)
-			}
+			commons.WriteJSON(http.StatusOK, "It works!", w)
 		})
 
 		router.HandleFunc(pat.Post("/index/:project"), func(w http.ResponseWriter, rq *http.Request) {
@@ -146,15 +143,32 @@ func main() {
 					} else {
 						commons.WriteJSON(http.StatusOK, esRs, w)
 					}
-
 				}
 			}
 		})
 
 		router.HandleFunc(pat.Post("/analyze/:project"), func(w http.ResponseWriter, rq *http.Request) {
-			//project := pat.Param(rq, "project")
+			project := pat.Param(rq, "project")
 
-			commons.WriteJSON(http.StatusOK, "To be implemented...", w)
+			defer rq.Body.Close()
+
+			rqBody, err := ioutil.ReadAll(rq.Body)
+			if err != nil {
+				commons.WriteJSON(http.StatusBadRequest, err, w)
+			} else {
+				launch := &Launch{}
+				err = json.Unmarshal(rqBody, launch)
+				if err != nil {
+					commons.WriteJSON(http.StatusBadRequest, err, w)
+				} else {
+					esRs, err := c.AnalyzeLogs(project, launch)
+					if err != nil {
+						commons.WriteJSON(http.StatusInternalServerError, err, w)
+					} else {
+						commons.WriteJSON(http.StatusOK, esRs, w)
+					}
+				}
+			}
 		})
 	})
 
@@ -211,15 +225,17 @@ func (c *client) RecreateIndex(name string, force bool) {
 		fmt.Println(err)
 		return
 	}
-	if exists && force {
-		dRs, err := c.DeleteIndex(name)
-		if err != nil {
-			fmt.Printf("Delete index error: %v\n", err)
+	if exists {
+		if force {
+			dRs, err := c.DeleteIndex(name)
+			if err != nil {
+				fmt.Printf("Delete index error: %v\n", err)
+				return
+			}
+			fmt.Printf("Delete index response: %v\n", dRs)
+		} else {
 			return
 		}
-		fmt.Printf("Delete index response: %v\n", dRs)
-	} else {
-		return
 	}
 	cRs, err := c.CreateIndex(name)
 	if err != nil {
@@ -275,6 +291,8 @@ func (c *client) CreateIndex(name string) (*ESResponse, error) {
 }
 
 func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
+	re := regexp.MustCompile("\\d+")
+
 	indexType := "log"
 
 	var bodies []interface{}
@@ -292,12 +310,14 @@ func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
 
 			bodies = append(bodies, op)
 
+			message := re.ReplaceAllString(l.Message, "")
+
 			body := map[string]interface{}{
 				"launch_name": launch.LaunchName,
 				"test_item":   ti.TestItemID,
 				"issue_type":  ti.IssueType,
 				"log_level":   l.LogLevel,
-				"message":     l.Message,
+				"message":     message,
 			}
 
 			bodies = append(bodies, body)
@@ -312,9 +332,16 @@ func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
 }
 
 func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
-	for _, ti := range launch.TestItems {
+	re := regexp.MustCompile("\\d+")
+
+	for i, ti := range launch.TestItems {
+
+		issueTypes := make(map[string]float64)
+
 		for _, l := range ti.Logs {
-			query := buildQuery(launch.LaunchName, l.Message)
+			message := re.ReplaceAllString(l.Message, "")
+
+			query := buildQuery(launch.LaunchName, message)
 
 			rs, err := sendRequest("GET", c.url+name+"/log/_search", query)
 
@@ -322,19 +349,79 @@ func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
 				return nil, err
 			}
 
-			esRs := &ESResponse{}
+			esRs := &SearchQueryResponse{}
 			err = json.Unmarshal(rs, esRs)
 			if err != nil {
 				return nil, err
 			}
 
+			if esRs.Hits.Total > 0 {
+				k := 20
+				n := len(esRs.Hits.Hits)
+				if n < k {
+					k = n
+				}
+				totalScore := 0.0
+				hits := esRs.Hits.Hits[:k]
+				for _, h := range hits {
+					totalScore += h.Score
+				}
+				for _, h := range hits {
+					typeScore, ok := issueTypes[h.Source.IssueType]
+					score := h.Score / totalScore
+					if ok {
+						typeScore += score
+					} else {
+						typeScore = score
+					}
+					issueTypes[h.Source.IssueType] = typeScore
+				}
+			}
+
+			// if esRs.Hits.Total > 0 {
+			// 	k := 10
+			// 	n := len(esRs.Hits.Hits)
+			// 	if n < k {
+			// 		k = n
+			// 	}
+			// 	hits := esRs.Hits.Hits[:k]
+			// 	for _, h := range hits {
+			// 		score, ok := issueTypes[h.Source.IssueType]
+			// 		if ok {
+			// 			score += 1.0
+			// 		} else {
+			// 			score = 1.0
+			// 		}
+			// 		issueTypes[h.Source.IssueType] = score
+			// 	}
+			// }
+
 		}
+
+		var predictedIssueType string
+
+		if len(issueTypes) > 0 {
+			max := 0.0
+			for k, v := range issueTypes {
+				if v > max {
+					max = v
+					predictedIssueType = k
+				}
+			}
+		}
+
+		if ti.IssueType != "" {
+			fmt.Printf("Actual: %v, predicted: %v\n", ti.OriginalIssueType, predictedIssueType)
+		}
+		launch.TestItems[i].IssueType = predictedIssueType
 	}
-	return &Launch{}, nil
+
+	return launch, nil
 }
 
 func buildQuery(launchName, logMessage string) interface{} {
 	return map[string]interface{}{
+		"size": 20,
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
 				"must_not": map[string]interface{}{
@@ -355,7 +442,7 @@ func buildQuery(launchName, logMessage string) interface{} {
 					},
 					map[string]interface{}{
 						"more_like_this": map[string]interface{}{
-							"fields":               []string{"issue_type"},
+							"fields":               []string{"message"},
 							"like":                 logMessage,
 							"minimum_should_match": "90%",
 						},
@@ -365,7 +452,7 @@ func buildQuery(launchName, logMessage string) interface{} {
 					"term": map[string]interface{}{
 						"launch_name": map[string]interface{}{
 							"value": launchName,
-							"boost": 5.0,
+							"boost": 2.0,
 						},
 					},
 				},

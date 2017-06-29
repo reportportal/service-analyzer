@@ -68,19 +68,6 @@ type Launch struct {
 	TestItems  []TestItem `json:"testItems"`
 }
 
-//   {
-//     "health" : "yellow",
-//     "status" : "open",
-//     "index" : "index",
-//     "uuid" : "JOFc9Xb1Rg-OgRljr4Sc-g",
-//     "pri" : "5",
-//     "rep" : "1",
-//     "docs.count" : "1",
-//     "docs.deleted" : "0",
-//     "store.size" : "27kb",
-//     "pri.store.size" : "27kb"
-//   }
-
 // Index struct
 type Index struct {
 	Health       string `json:"health"`
@@ -109,7 +96,7 @@ func main() {
 
 	srv := server.New(rpConf, info)
 
-	c := &client{"http://localhost:9200/", []string{}}
+	c := &client{"http://localhost:9200/", []Index{}}
 
 	srv.AddRoute(func(router *goji.Mux) {
 		router.Use(func(next http.Handler) http.Handler {
@@ -158,7 +145,7 @@ func main() {
 
 type client struct {
 	url      string
-	indicies []string
+	indicies []Index
 }
 
 func (rs *ESResponse) String() string {
@@ -188,6 +175,8 @@ func (c *client) ListIndices() (*[]Index, error) {
 	if err != nil {
 		return &[]Index{}, err
 	}
+
+	c.indicies = *indices
 
 	return indices, nil
 }
@@ -295,7 +284,7 @@ func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
 		return &ESResponse{}, nil
 	}
 
-	return sendRequest("PUT", c.url+name, bodies...)
+	return sendRequest("PUT", c.url+"_bulk", bodies...)
 }
 
 func sendRequest(method, url string, bodies ...interface{}) (*ESResponse, error) {

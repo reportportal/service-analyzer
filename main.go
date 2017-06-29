@@ -27,45 +27,33 @@ type ESClient interface {
 	ListIndices() (*[]Index, error)
 }
 
-// ESErrorCause struct
-type ESErrorCause struct {
-	Type   string `json:"type"`
-	Reason string `json:"reason"`
-}
-
-// ESError struct
-type ESError struct {
-	RootCause []ESErrorCause `json:"root_cause"`
-	Type      string         `json:"type"`
-	Reason    string         `json:"reason"`
-}
-
 // ESResponse struct
 type ESResponse struct {
-	Acknowledged bool    `json:"acknowledged"`
-	Error        ESError `json:"error"`
-	Status       int     `json:"status"`
-}
-
-// Log struct
-type Log struct {
-	LogID    string `json:"logId"`
-	LogLevel int    `json:"logLevel"`
-	Message  string `json:"message"`
-}
-
-// TestItem struct
-type TestItem struct {
-	TestItemID string `json:"testItemId"`
-	IssueType  string `json:"issueType"`
-	Logs       []Log  `json:"logs"`
+	Acknowledged bool `json:"acknowledged"`
+	Error        struct {
+		RootCause []struct {
+			Type   string `json:"type"`
+			Reason string `json:"reason"`
+		} `json:"root_cause"`
+		Type   string `json:"type"`
+		Reason string `json:"reason"`
+	} `json:"error"`
+	Status int `json:"status"`
 }
 
 // Launch struct
 type Launch struct {
-	LaunchID   string     `json:"launchId"`
-	LaunchName string     `json:"launchName"`
-	TestItems  []TestItem `json:"testItems"`
+	LaunchID   string `json:"launchId"`
+	LaunchName string `json:"launchName"`
+	TestItems  []struct {
+		TestItemID string `json:"testItemId"`
+		IssueType  string `json:"issueType"`
+		Logs       []struct {
+			LogID    string `json:"logId"`
+			LogLevel int    `json:"logLevel"`
+			Message  string `json:"message"`
+		} `json:"logs"`
+	} `json:"testItems"`
 }
 
 // Index struct
@@ -80,6 +68,29 @@ type Index struct {
 	DocsDeleted  string `json:"docs.deleted"`
 	StoreSize    string `json:"store.size"`
 	PriStoreSize string `json:"pri.store.size"`
+}
+
+// SearchQueryResponse struct
+type SearchQueryResponse struct {
+	Took     int  `json:"took"`
+	TimedOut bool `json:"timed_out"`
+	Hits     struct {
+		Total    int     `json:"total"`
+		MaxScore float64 `json:"max_score"`
+		Hits     []struct {
+			Index  string  `json:"_index"`
+			Type   string  `json:"_type"`
+			ID     string  `json:"_id"`
+			Score  float64 `json:"_score"`
+			Source struct {
+				TestItem   string `json:"test_item"`
+				IssueType  string `json:"issue_type"`
+				Message    string `json:"message"`
+				LogLevel   int    `json:"log_level"`
+				LaunchName string `json:"launch_name"`
+			} `json:"_source"`
+		} `json:"hits"`
+	} `json:"hits"`
 }
 
 func main() {
@@ -97,6 +108,7 @@ func main() {
 	srv := server.New(rpConf, info)
 
 	c := &client{"http://localhost:9200/", []Index{}}
+	deleteAllIndices(c)
 
 	srv.AddRoute(func(router *goji.Mux) {
 		router.Use(func(next http.Handler) http.Handler {
@@ -138,6 +150,12 @@ func main() {
 				}
 			}
 		})
+
+		router.HandleFunc(pat.Post("/analyze/:project"), func(w http.ResponseWriter, rq *http.Request) {
+			//project := pat.Param(rq, "project")
+
+			commons.WriteJSON(http.StatusOK, "To be implemented...", w)
+		})
 	})
 
 	srv.StartServer()
@@ -156,24 +174,30 @@ func (rs *ESResponse) String() string {
 	return fmt.Sprintf("%v", string(s))
 }
 
-func (c *client) ListIndices() (*[]Index, error) {
-	httpClient := &http.Client{}
-	rs, err := httpClient.Get(c.url + "_cat/indices?format=json")
+func deleteAllIndices(c *client) (bool, error) {
+	indices, err := c.ListIndices()
 	if err != nil {
-		return &[]Index{}, err
+		return false, err
 	}
+	for _, index := range *indices {
+		_, err := c.DeleteIndex(index.Index)
+		if err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
 
-	defer rs.Body.Close()
-
-	rsBody, err := ioutil.ReadAll(rs.Body)
+func (c *client) ListIndices() (*[]Index, error) {
+	rs, err := sendRequest("GET", c.url+"_cat/indices?format=json", nil)
 	if err != nil {
-		return &[]Index{}, err
+		return nil, err
 	}
 
 	indices := &[]Index{}
-	err = json.Unmarshal(rsBody, indices)
+	err = json.Unmarshal(rs, indices)
 	if err != nil {
-		return &[]Index{}, err
+		return nil, err
 	}
 
 	c.indicies = *indices
@@ -218,7 +242,7 @@ func (c *client) IndexExists(name string) (bool, error) {
 }
 
 func (c *client) DeleteIndex(name string) (*ESResponse, error) {
-	return sendRequest("DELETE", c.url+name)
+	return sendOpRequest("DELETE", c.url+name)
 }
 
 func (c *client) CreateIndex(name string) (*ESResponse, error) {
@@ -247,7 +271,7 @@ func (c *client) CreateIndex(name string) (*ESResponse, error) {
 		},
 	}
 
-	return sendRequest("PUT", c.url+name, body)
+	return sendOpRequest("PUT", c.url+name, body)
 }
 
 func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
@@ -284,10 +308,88 @@ func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
 		return &ESResponse{}, nil
 	}
 
-	return sendRequest("PUT", c.url+"_bulk", bodies...)
+	return sendOpRequest("PUT", c.url+"_bulk", bodies...)
 }
 
-func sendRequest(method, url string, bodies ...interface{}) (*ESResponse, error) {
+func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
+	for _, ti := range launch.TestItems {
+		for _, l := range ti.Logs {
+			query := buildQuery(launch.LaunchName, l.Message)
+
+			rs, err := sendRequest("GET", c.url+name+"/log/_search", query)
+
+			if err != nil {
+				return nil, err
+			}
+
+			esRs := &ESResponse{}
+			err = json.Unmarshal(rs, esRs)
+			if err != nil {
+				return nil, err
+			}
+
+		}
+	}
+	return &Launch{}, nil
+}
+
+func buildQuery(launchName, logMessage string) interface{} {
+	return map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"must_not": map[string]interface{}{
+					"wildcard": map[string]interface{}{
+						"issue_type": "TI*",
+					},
+				},
+				"must": []interface{}{
+					map[string]interface{}{
+						"term": map[string]interface{}{
+							"log_level": 40000,
+						},
+					},
+					map[string]interface{}{
+						"exists": map[string]interface{}{
+							"field": "issue_type",
+						},
+					},
+					map[string]interface{}{
+						"more_like_this": map[string]interface{}{
+							"fields":               []string{"issue_type"},
+							"like":                 logMessage,
+							"minimum_should_match": "90%",
+						},
+					},
+				},
+				"should": map[string]interface{}{
+					"term": map[string]interface{}{
+						"launch_name": map[string]interface{}{
+							"value": launchName,
+							"boost": 5.0,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func sendOpRequest(method, url string, bodies ...interface{}) (*ESResponse, error) {
+	rs, err := sendRequest(method, url, bodies...)
+	if err != nil {
+		return nil, err
+	}
+
+	esRs := &ESResponse{}
+	err = json.Unmarshal(rs, esRs)
+	if err != nil {
+		return nil, err
+	}
+
+	return esRs, nil
+}
+
+func sendRequest(method, url string, bodies ...interface{}) ([]byte, error) {
 	var rdr io.Reader
 
 	nl := []byte("\n")
@@ -322,11 +424,5 @@ func sendRequest(method, url string, bodies ...interface{}) (*ESResponse, error)
 		return nil, err
 	}
 
-	umRs := &ESResponse{}
-	err = json.Unmarshal(rsBody, umRs)
-	if err != nil {
-		return nil, err
-	}
-
-	return umRs, nil
+	return rsBody, nil
 }

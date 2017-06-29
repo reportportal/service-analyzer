@@ -17,58 +17,14 @@ import (
 	"goji.io/pat"
 )
 
-func main() {
-	defaults := map[string]interface{}{
-		"AppName":     "analyzer",
-		"Registry":    nil,
-		"Server.Port": 9000,
-	}
-
-	rpConf := conf.LoadConfig("", defaults)
-
-	info := commons.GetBuildInfo()
-	info.Name = "Service Analyzer"
-
-	srv := server.New(rpConf, info)
-
-	srv.AddRoute(func(router *goji.Mux) {
-		router.Use(func(next http.Handler) http.Handler {
-			return handlers.LoggingHandler(os.Stdout, next)
-		})
-
-		router.HandleFunc(pat.Get("/"), func(w http.ResponseWriter, rq *http.Request) {
-			commons.WriteJSON(http.StatusOK, "It works!", w)
-		})
-
-		router.HandleFunc(pat.Post("/index/:project"), func(w http.ResponseWriter, rq *http.Request) {
-			project := pat.Param(rq, "project")
-
-			recreateIndex(project, false)
-
-			defer rq.Body.Close()
-
-			rqBody, err := ioutil.ReadAll(rq.Body)
-			if err != nil {
-				commons.WriteJSON(http.StatusBadRequest, err, w)
-			} else {
-				launch := &Launch{}
-				err = json.Unmarshal(rqBody, launch)
-				if err != nil {
-					commons.WriteJSON(http.StatusBadRequest, err, w)
-				} else {
-					esRs, err := indexLogs(project, launch)
-					if err != nil {
-						commons.WriteJSON(http.StatusInternalServerError, err, w)
-					} else {
-						commons.WriteJSON(http.StatusOK, esRs, w)
-					}
-
-				}
-			}
-		})
-	})
-
-	srv.StartServer()
+// ESClient interface
+type ESClient interface {
+	IndexExists(name string) (bool, error)
+	CreateIndex(name string) (bool, error)
+	DeleteIndex(name string) (bool, error)
+	RecreateIndex(name string) (bool, error)
+	IndexLogs(name string, launch *Launch) (*ESResponse, error)
+	ListIndices() (*[]Index, error)
 }
 
 // ESErrorCause struct
@@ -112,6 +68,99 @@ type Launch struct {
 	TestItems  []TestItem `json:"testItems"`
 }
 
+//   {
+//     "health" : "yellow",
+//     "status" : "open",
+//     "index" : "index",
+//     "uuid" : "JOFc9Xb1Rg-OgRljr4Sc-g",
+//     "pri" : "5",
+//     "rep" : "1",
+//     "docs.count" : "1",
+//     "docs.deleted" : "0",
+//     "store.size" : "27kb",
+//     "pri.store.size" : "27kb"
+//   }
+
+// Index struct
+type Index struct {
+	Health       string `json:"health"`
+	Status       string `json:"status"`
+	Index        string `json:"index"`
+	UUID         string `json:"uuid"`
+	Pri          string `json:"pri"`
+	Rep          string `json:"rep"`
+	DocsCount    string `json:"docs.count"`
+	DocsDeleted  string `json:"docs.deleted"`
+	StoreSize    string `json:"store.size"`
+	PriStoreSize string `json:"pri.store.size"`
+}
+
+func main() {
+	defaults := map[string]interface{}{
+		"AppName":     "analyzer",
+		"Registry":    nil,
+		"Server.Port": 9000,
+	}
+
+	rpConf := conf.LoadConfig("", defaults)
+
+	info := commons.GetBuildInfo()
+	info.Name = "Service Analyzer"
+
+	srv := server.New(rpConf, info)
+
+	c := &client{"http://localhost:9200/", []string{}}
+
+	srv.AddRoute(func(router *goji.Mux) {
+		router.Use(func(next http.Handler) http.Handler {
+			return handlers.LoggingHandler(os.Stdout, next)
+		})
+
+		router.HandleFunc(pat.Get("/"), func(w http.ResponseWriter, rq *http.Request) {
+			indicies, err := c.ListIndices()
+			if err != nil {
+				commons.WriteJSON(http.StatusInternalServerError, "Unable to list indices", w)
+			} else {
+				commons.WriteJSON(http.StatusOK, indicies, w)
+			}
+		})
+
+		router.HandleFunc(pat.Post("/index/:project"), func(w http.ResponseWriter, rq *http.Request) {
+			project := pat.Param(rq, "project")
+
+			c.RecreateIndex(project, false)
+
+			defer rq.Body.Close()
+
+			rqBody, err := ioutil.ReadAll(rq.Body)
+			if err != nil {
+				commons.WriteJSON(http.StatusBadRequest, err, w)
+			} else {
+				launch := &Launch{}
+				err = json.Unmarshal(rqBody, launch)
+				if err != nil {
+					commons.WriteJSON(http.StatusBadRequest, err, w)
+				} else {
+					esRs, err := c.IndexLogs(project, launch)
+					if err != nil {
+						commons.WriteJSON(http.StatusInternalServerError, err, w)
+					} else {
+						commons.WriteJSON(http.StatusOK, esRs, w)
+					}
+
+				}
+			}
+		})
+	})
+
+	srv.StartServer()
+}
+
+type client struct {
+	url      string
+	indicies []string
+}
+
 func (rs *ESResponse) String() string {
 	s, err := json.Marshal(rs)
 	if err != nil {
@@ -120,14 +169,37 @@ func (rs *ESResponse) String() string {
 	return fmt.Sprintf("%v", string(s))
 }
 
-func recreateIndex(name string, force bool) {
-	exists, err := indexExists(name)
+func (c *client) ListIndices() (*[]Index, error) {
+	httpClient := &http.Client{}
+	rs, err := httpClient.Get(c.url + "_cat/indices?format=json")
+	if err != nil {
+		return &[]Index{}, err
+	}
+
+	defer rs.Body.Close()
+
+	rsBody, err := ioutil.ReadAll(rs.Body)
+	if err != nil {
+		return &[]Index{}, err
+	}
+
+	indices := &[]Index{}
+	err = json.Unmarshal(rsBody, indices)
+	if err != nil {
+		return &[]Index{}, err
+	}
+
+	return indices, nil
+}
+
+func (c *client) RecreateIndex(name string, force bool) {
+	exists, err := c.IndexExists(name)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	if exists && force {
-		dRs, err := deleteIndex(name)
+		dRs, err := c.DeleteIndex(name)
 		if err != nil {
 			fmt.Printf("Delete index error: %v\n", err)
 			return
@@ -136,7 +208,7 @@ func recreateIndex(name string, force bool) {
 	} else {
 		return
 	}
-	cRs, err := createIndex(name)
+	cRs, err := c.CreateIndex(name)
 	if err != nil {
 		fmt.Printf("Create index error: %v\n", err)
 		return
@@ -144,11 +216,11 @@ func recreateIndex(name string, force bool) {
 	fmt.Printf("Create index response: %v\n", cRs)
 }
 
-func indexExists(name string) (bool, error) {
-	url := "http://localhost:9200/" + name
+func (c *client) IndexExists(name string) (bool, error) {
+	url := c.url + name
 
-	c := &http.Client{}
-	rs, err := c.Head(url)
+	httpClient := &http.Client{}
+	rs, err := httpClient.Head(url)
 	if err != nil {
 		return false, err
 	}
@@ -156,15 +228,11 @@ func indexExists(name string) (bool, error) {
 	return rs.StatusCode == http.StatusOK, nil
 }
 
-func deleteIndex(name string) (*ESResponse, error) {
-	url := "http://localhost:9200/" + name
-
-	return sendRequest("DELETE", url)
+func (c *client) DeleteIndex(name string) (*ESResponse, error) {
+	return sendRequest("DELETE", c.url+name)
 }
 
-func createIndex(name string) (*ESResponse, error) {
-	url := "http://localhost:9200/" + name
-
+func (c *client) CreateIndex(name string) (*ESResponse, error) {
 	body := map[string]interface{}{
 		"mappings": map[string]interface{}{
 			"log": map[string]interface{}{
@@ -190,12 +258,10 @@ func createIndex(name string) (*ESResponse, error) {
 		},
 	}
 
-	return sendRequest("PUT", url, body)
+	return sendRequest("PUT", c.url+name, body)
 }
 
-func indexLogs(name string, launch *Launch) (*ESResponse, error) {
-	url := "http://localhost:9200/_bulk"
-
+func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
 	indexType := "log"
 
 	var bodies []interface{}
@@ -225,7 +291,11 @@ func indexLogs(name string, launch *Launch) (*ESResponse, error) {
 		}
 	}
 
-	return sendRequest("PUT", url, bodies...)
+	if len(bodies) == 0 {
+		return &ESResponse{}, nil
+	}
+
+	return sendRequest("PUT", c.url+name, bodies...)
 }
 
 func sendRequest(method, url string, bodies ...interface{}) (*ESResponse, error) {

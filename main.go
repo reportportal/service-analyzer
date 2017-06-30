@@ -20,12 +20,14 @@ import (
 
 // ESClient interface
 type ESClient interface {
-	IndexExists(name string) (bool, error)
-	CreateIndex(name string) (bool, error)
-	DeleteIndex(name string) (bool, error)
-	RecreateIndex(name string) (bool, error)
-	IndexLogs(name string, launch *Launch) (*ESResponse, error)
 	ListIndices() (*[]Index, error)
+	IndexExists(name string) (bool, error)
+	CreateIndex(name string) (*ESResponse, error)
+	DeleteIndex(name string) (*ESResponse, error)
+	RecreateIndex(name string, force bool)
+	IndexLogs(name string, launch *Launch) (*ESResponse, error)
+	AnalyzeLogs(name string, launch *Launch) (*Launch, error)
+	SanitizeText(text string) string
 }
 
 // ESResponse struct
@@ -95,6 +97,21 @@ type SearchQueryResponse struct {
 	} `json:"hits"`
 }
 
+type client struct {
+	url      string
+	indicies []Index
+	re       *regexp.Regexp
+}
+
+// NewClient creates new ESClient
+func NewClient(url string) ESClient {
+	c := &client{}
+	c.url = url
+	c.indicies = []Index{}
+	c.re = regexp.MustCompile("\\d+")
+	return c
+}
+
 func main() {
 	defaults := map[string]interface{}{
 		"AppName":     "analyzer",
@@ -109,8 +126,9 @@ func main() {
 
 	srv := server.New(rpConf, info)
 
-	c := &client{"http://localhost:9200/", []Index{}}
-	deleteAllIndices(c)
+	c := NewClient("http://localhost:9200/")
+
+	// deleteAllIndices(c)
 
 	srv.AddRoute(func(router *goji.Mux) {
 		router.Use(func(next http.Handler) http.Handler {
@@ -118,7 +136,20 @@ func main() {
 		})
 
 		router.HandleFunc(pat.Get("/"), func(w http.ResponseWriter, rq *http.Request) {
-			commons.WriteJSON(http.StatusOK, "It works!", w)
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintln(w, "It Works!")
+		})
+
+		router.HandleFunc(pat.Delete("/index/:project"), func(w http.ResponseWriter, rq *http.Request) {
+			project := pat.Param(rq, "project")
+			_, err := c.DeleteIndex(project)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintf(w, "Unable to delete index '%s'\n", project)
+			} else {
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintf(w, "Index '%s' successfully deleted\n", project)
+			}
 		})
 
 		router.HandleFunc(pat.Post("/index/:project"), func(w http.ResponseWriter, rq *http.Request) {
@@ -126,58 +157,39 @@ func main() {
 
 			c.RecreateIndex(project, false)
 
-			defer rq.Body.Close()
-
-			rqBody, err := ioutil.ReadAll(rq.Body)
-			if err != nil {
-				commons.WriteJSON(http.StatusBadRequest, err, w)
-			} else {
-				launch := &Launch{}
-				err = json.Unmarshal(rqBody, launch)
-				if err != nil {
-					commons.WriteJSON(http.StatusBadRequest, err, w)
-				} else {
-					esRs, err := c.IndexLogs(project, launch)
-					if err != nil {
-						commons.WriteJSON(http.StatusInternalServerError, err, w)
-					} else {
-						commons.WriteJSON(http.StatusOK, esRs, w)
-					}
-				}
-			}
+			handleLauchRequest(w, rq,
+				func(launch *Launch) (interface{}, error) {
+					return c.IndexLogs(project, launch)
+				})
 		})
 
 		router.HandleFunc(pat.Post("/analyze/:project"), func(w http.ResponseWriter, rq *http.Request) {
 			project := pat.Param(rq, "project")
 
-			defer rq.Body.Close()
-
-			rqBody, err := ioutil.ReadAll(rq.Body)
-			if err != nil {
-				commons.WriteJSON(http.StatusBadRequest, err, w)
-			} else {
-				launch := &Launch{}
-				err = json.Unmarshal(rqBody, launch)
-				if err != nil {
-					commons.WriteJSON(http.StatusBadRequest, err, w)
-				} else {
-					esRs, err := c.AnalyzeLogs(project, launch)
-					if err != nil {
-						commons.WriteJSON(http.StatusInternalServerError, err, w)
-					} else {
-						commons.WriteJSON(http.StatusOK, esRs, w)
-					}
-				}
-			}
+			handleLauchRequest(w, rq,
+				func(launch *Launch) (interface{}, error) {
+					return c.AnalyzeLogs(project, launch)
+				})
 		})
 	})
 
 	srv.StartServer()
 }
 
-type client struct {
-	url      string
-	indicies []Index
+type launchHandler func(*Launch) (interface{}, error)
+
+func handleLauchRequest(w http.ResponseWriter, rq *http.Request, handler launchHandler) {
+	launch, err := readRequestBody(rq)
+	if err != nil {
+		commons.WriteJSON(http.StatusBadRequest, err, w)
+	} else {
+		rs, err := handler(launch)
+		if err != nil {
+			commons.WriteJSON(http.StatusInternalServerError, err, w)
+		} else {
+			commons.WriteJSON(http.StatusOK, rs, w)
+		}
+	}
 }
 
 func (rs *ESResponse) String() string {
@@ -186,6 +198,22 @@ func (rs *ESResponse) String() string {
 		s = []byte{}
 	}
 	return fmt.Sprintf("%v", string(s))
+}
+
+func readRequestBody(rq *http.Request) (*Launch, error) {
+	defer rq.Body.Close()
+
+	rqBody, err := ioutil.ReadAll(rq.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	launch := &Launch{}
+	err = json.Unmarshal(rqBody, launch)
+	if err != nil {
+		return nil, err
+	}
+	return launch, err
 }
 
 func deleteAllIndices(c *client) (bool, error) {
@@ -263,6 +291,9 @@ func (c *client) DeleteIndex(name string) (*ESResponse, error) {
 
 func (c *client) CreateIndex(name string) (*ESResponse, error) {
 	body := map[string]interface{}{
+		"settings": map[string]interface{}{
+			"number_of_shards": 1,
+		},
 		"mappings": map[string]interface{}{
 			"log": map[string]interface{}{
 				"properties": map[string]interface{}{
@@ -291,8 +322,6 @@ func (c *client) CreateIndex(name string) (*ESResponse, error) {
 }
 
 func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
-	re := regexp.MustCompile("\\d+")
-
 	indexType := "log"
 
 	var bodies []interface{}
@@ -310,7 +339,7 @@ func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
 
 			bodies = append(bodies, op)
 
-			message := re.ReplaceAllString(l.Message, "")
+			message := c.SanitizeText(l.Message)
 
 			body := map[string]interface{}{
 				"launch_name": launch.LaunchName,
@@ -332,14 +361,12 @@ func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
 }
 
 func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
-	re := regexp.MustCompile("\\d+")
-
 	for i, ti := range launch.TestItems {
 
 		issueTypes := make(map[string]float64)
 
 		for _, l := range ti.Logs {
-			message := re.ReplaceAllString(l.Message, "")
+			message := c.SanitizeText(l.Message)
 
 			query := buildQuery(launch.LaunchName, message)
 
@@ -355,8 +382,10 @@ func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
 				return nil, err
 			}
 
+			// Two iterations over hits needed
+			// to achieve stable prediction
 			if esRs.Hits.Total > 0 {
-				k := 20
+				k := 10
 				n := len(esRs.Hits.Hits)
 				if n < k {
 					k = n
@@ -395,7 +424,6 @@ func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
 			// 		issueTypes[h.Source.IssueType] = score
 			// 	}
 			// }
-
 		}
 
 		var predictedIssueType string
@@ -410,18 +438,19 @@ func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
 			}
 		}
 
-		if ti.IssueType != "" {
-			fmt.Printf("Actual: %v, predicted: %v\n", ti.OriginalIssueType, predictedIssueType)
-		}
 		launch.TestItems[i].IssueType = predictedIssueType
 	}
 
 	return launch, nil
 }
 
+func (c *client) SanitizeText(text string) string {
+	return c.re.ReplaceAllString(text, "")
+}
+
 func buildQuery(launchName, logMessage string) interface{} {
 	return map[string]interface{}{
-		"size": 20,
+		"size": 10,
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
 				"must_not": map[string]interface{}{

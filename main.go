@@ -43,7 +43,7 @@ func main() {
 			fmt.Fprintln(w, "It Works!")
 		})
 
-		router.HandleFunc(pat.Delete("/index/:project"), func(w http.ResponseWriter, rq *http.Request) {
+		router.HandleFunc(pat.Delete("/:project"), func(w http.ResponseWriter, rq *http.Request) {
 			project := pat.Param(rq, "project")
 			_, err := c.DeleteIndex(project)
 			if err != nil {
@@ -55,7 +55,7 @@ func main() {
 			}
 		})
 
-		router.HandleFunc(pat.Post("/index/:project"), func(w http.ResponseWriter, rq *http.Request) {
+		router.HandleFunc(pat.Post("/:project/_index"), func(w http.ResponseWriter, rq *http.Request) {
 			project := pat.Param(rq, "project")
 
 			c.RecreateIndex(project, false)
@@ -66,7 +66,7 @@ func main() {
 				})
 		})
 
-		router.HandleFunc(pat.Post("/analyze/:project"), func(w http.ResponseWriter, rq *http.Request) {
+		router.HandleFunc(pat.Post("/:project/_analyze"), func(w http.ResponseWriter, rq *http.Request) {
 			project := pat.Param(rq, "project")
 
 			handleLauchRequest(w, rq,

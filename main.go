@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/gorilla/handlers"
-	"github.com/isharamet/service-analyzer/esclient"
 	"github.com/reportportal/commons-go/commons"
 	"github.com/reportportal/commons-go/conf"
 	"github.com/reportportal/commons-go/server"
@@ -31,7 +30,7 @@ func main() {
 
 	srv := server.New(rpConf, info)
 
-	c := esclient.NewClient(rpConf.Get("Elasticsearch.Hosts").(string))
+	c := NewClient(rpConf.Get("Elasticsearch.Hosts").(string))
 
 	srv.AddRoute(func(router *goji.Mux) {
 		router.Use(func(next http.Handler) http.Handler {
@@ -61,7 +60,7 @@ func main() {
 			c.RecreateIndex(project, false)
 
 			handleLauchRequest(w, rq,
-				func(launch *esclient.Launch) (interface{}, error) {
+				func(launch *Launch) (interface{}, error) {
 					return c.IndexLogs(project, launch)
 				})
 		})
@@ -70,7 +69,7 @@ func main() {
 			project := pat.Param(rq, "project")
 
 			handleLauchRequest(w, rq,
-				func(launch *esclient.Launch) (interface{}, error) {
+				func(launch *Launch) (interface{}, error) {
 					return c.AnalyzeLogs(project, launch)
 				})
 		})
@@ -79,7 +78,7 @@ func main() {
 	srv.StartServer()
 }
 
-type launchHandler func(*esclient.Launch) (interface{}, error)
+type launchHandler func(*Launch) (interface{}, error)
 
 func handleLauchRequest(w http.ResponseWriter, rq *http.Request, handler launchHandler) {
 	launch, err := readRequestBody(rq)
@@ -95,7 +94,7 @@ func handleLauchRequest(w http.ResponseWriter, rq *http.Request, handler launchH
 	}
 }
 
-func readRequestBody(rq *http.Request) (*esclient.Launch, error) {
+func readRequestBody(rq *http.Request) (*Launch, error) {
 	defer rq.Body.Close()
 
 	rqBody, err := ioutil.ReadAll(rq.Body)
@@ -103,7 +102,7 @@ func readRequestBody(rq *http.Request) (*esclient.Launch, error) {
 		return nil, err
 	}
 
-	launch := &esclient.Launch{}
+	launch := &Launch{}
 	err = json.Unmarshal(rqBody, launch)
 	if err != nil {
 		return nil, err

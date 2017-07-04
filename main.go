@@ -18,9 +18,10 @@ import (
 
 func main() {
 	defaults := map[string]interface{}{
-		"AppName":     "analyzer",
-		"Registry":    nil,
-		"Server.Port": 9000,
+		"AppName":             "analyzer",
+		"Registry":            nil,
+		"Server.Port":         9000,
+		"Elasticsearch.Hosts": "http://localhost:9200",
 	}
 
 	rpConf := conf.LoadConfig("", defaults)
@@ -30,7 +31,7 @@ func main() {
 
 	srv := server.New(rpConf, info)
 
-	c := esclient.NewClient("http://localhost:9200/")
+	c := esclient.NewClient(rpConf.Get("Elasticsearch.Hosts").(string))
 
 	srv.AddRoute(func(router *goji.Mux) {
 		router.Use(func(next http.Handler) http.Handler {

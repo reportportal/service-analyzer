@@ -8,18 +8,21 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strings"
 )
 
 // ESClient interface
 type ESClient interface {
 	ListIndices() (*[]Index, error)
-	IndexExists(name string) (bool, error)
 	CreateIndex(name string) (*ESResponse, error)
+	IndexExists(name string) (bool, error)
 	DeleteIndex(name string) (*ESResponse, error)
 	RecreateIndex(name string, force bool)
 	IndexLogs(name string, launch *Launch) (*ESResponse, error)
 	AnalyzeLogs(name string, launch *Launch) (*Launch, error)
-	SanitizeText(text string) string
+
+	buildURL(pathElements ...string) string
+	sanitizeText(text string) string
 }
 
 // ESResponse struct
@@ -90,15 +93,15 @@ type SearchQueryResponse struct {
 }
 
 type client struct {
-	url      string
+	hosts    []string
 	indicies []Index
 	re       *regexp.Regexp
 }
 
 // NewClient creates new ESClient
-func NewClient(url string) ESClient {
+func NewClient(hosts string) ESClient {
 	c := &client{}
-	c.url = url
+	c.hosts = strings.Split(hosts, ",")
 	c.indicies = []Index{}
 	c.re = regexp.MustCompile("\\d+")
 	return c
@@ -113,7 +116,9 @@ func (rs *ESResponse) String() string {
 }
 
 func (c *client) ListIndices() (*[]Index, error) {
-	rs, err := sendRequest("GET", c.url+"_cat/indices?format=json", nil)
+	url := c.buildURL("_cat", "indices?format=json")
+
+	rs, err := sendRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +161,7 @@ func (c *client) RecreateIndex(name string, force bool) {
 }
 
 func (c *client) IndexExists(name string) (bool, error) {
-	url := c.url + name
+	url := c.buildURL(name)
 
 	httpClient := &http.Client{}
 	rs, err := httpClient.Head(url)
@@ -168,7 +173,8 @@ func (c *client) IndexExists(name string) (bool, error) {
 }
 
 func (c *client) DeleteIndex(name string) (*ESResponse, error) {
-	return sendOpRequest("DELETE", c.url+name)
+	url := c.buildURL(name)
+	return sendOpRequest("DELETE", url)
 }
 
 func (c *client) CreateIndex(name string) (*ESResponse, error) {
@@ -200,7 +206,9 @@ func (c *client) CreateIndex(name string) (*ESResponse, error) {
 		},
 	}
 
-	return sendOpRequest("PUT", c.url+name, body)
+	url := c.buildURL(name)
+
+	return sendOpRequest("PUT", url, body)
 }
 
 func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
@@ -221,7 +229,7 @@ func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
 
 			bodies = append(bodies, op)
 
-			message := c.SanitizeText(l.Message)
+			message := c.sanitizeText(l.Message)
 
 			body := map[string]interface{}{
 				"launch_name": launch.LaunchName,
@@ -239,20 +247,24 @@ func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
 		return &ESResponse{}, nil
 	}
 
-	return sendOpRequest("PUT", c.url+"_bulk", bodies...)
+	url := c.buildURL("_bulk")
+
+	return sendOpRequest("PUT", url, bodies...)
 }
 
 func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
+	url := c.buildURL(name, "log", "_search")
+
 	for i, ti := range launch.TestItems {
 
 		issueTypes := make(map[string]float64)
 
 		for _, l := range ti.Logs {
-			message := c.SanitizeText(l.Message)
+			message := c.sanitizeText(l.Message)
 
 			query := buildQuery(launch.LaunchName, message)
 
-			rs, err := sendRequest("GET", c.url+name+"/log/_search", query)
+			rs, err := sendRequest("GET", url, query)
 
 			if err != nil {
 				return nil, err
@@ -326,8 +338,12 @@ func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
 	return launch, nil
 }
 
-func (c *client) SanitizeText(text string) string {
+func (c *client) sanitizeText(text string) string {
 	return c.re.ReplaceAllString(text, "")
+}
+
+func (c *client) buildURL(pathElements ...string) string {
+	return c.hosts[0] + "/" + strings.Join(pathElements, "/")
 }
 
 func buildQuery(launchName, logMessage string) interface{} {

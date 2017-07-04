@@ -15,19 +15,19 @@ import (
 // ESClient interface
 type ESClient interface {
 	ListIndices() (*[]Index, error)
-	CreateIndex(name string) (*ESResponse, error)
+	CreateIndex(name string) (*Response, error)
 	IndexExists(name string) (bool, error)
-	DeleteIndex(name string) (*ESResponse, error)
+	DeleteIndex(name string) (*Response, error)
 	RecreateIndex(name string, force bool)
-	IndexLogs(name string, launch *Launch) (*ESResponse, error)
+	IndexLogs(name string, launch *Launch) (*Response, error)
 	AnalyzeLogs(name string, launch *Launch) (*Launch, error)
 
 	buildURL(pathElements ...string) string
 	sanitizeText(text string) string
 }
 
-// ESResponse struct
-type ESResponse struct {
+// Response struct
+type Response struct {
 	Acknowledged bool `json:"acknowledged"`
 	Error        struct {
 		RootCause []struct {
@@ -70,8 +70,8 @@ type Index struct {
 	PriStoreSize string `json:"pri.store.size"`
 }
 
-// SearchQueryResponse struct
-type SearchQueryResponse struct {
+// SearchResult struct
+type SearchResult struct {
 	Took     int  `json:"took"`
 	TimedOut bool `json:"timed_out"`
 	Hits     struct {
@@ -108,7 +108,7 @@ func NewClient(hosts string) ESClient {
 	return c
 }
 
-func (rs *ESResponse) String() string {
+func (rs *Response) String() string {
 	s, err := json.Marshal(rs)
 	if err != nil {
 		s = []byte{}
@@ -173,12 +173,12 @@ func (c *client) IndexExists(name string) (bool, error) {
 	return rs.StatusCode == http.StatusOK, nil
 }
 
-func (c *client) DeleteIndex(name string) (*ESResponse, error) {
+func (c *client) DeleteIndex(name string) (*Response, error) {
 	url := c.buildURL(name)
 	return sendOpRequest("DELETE", url)
 }
 
-func (c *client) CreateIndex(name string) (*ESResponse, error) {
+func (c *client) CreateIndex(name string) (*Response, error) {
 	body := map[string]interface{}{
 		"settings": map[string]interface{}{
 			"number_of_shards": 1,
@@ -212,7 +212,7 @@ func (c *client) CreateIndex(name string) (*ESResponse, error) {
 	return sendOpRequest("PUT", url, body)
 }
 
-func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
+func (c *client) IndexLogs(name string, launch *Launch) (*Response, error) {
 	indexType := "log"
 
 	var bodies []interface{}
@@ -245,7 +245,7 @@ func (c *client) IndexLogs(name string, launch *Launch) (*ESResponse, error) {
 	}
 
 	if len(bodies) == 0 {
-		return &ESResponse{}, nil
+		return &Response{}, nil
 	}
 
 	url := c.buildURL("_bulk")
@@ -271,7 +271,7 @@ func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
 				return nil, err
 			}
 
-			esRs := &SearchQueryResponse{}
+			esRs := &SearchResult{}
 			err = json.Unmarshal(rs, esRs)
 			if err != nil {
 				return nil, err
@@ -389,13 +389,13 @@ func buildQuery(launchName, logMessage string) interface{} {
 	}
 }
 
-func sendOpRequest(method, url string, bodies ...interface{}) (*ESResponse, error) {
+func sendOpRequest(method, url string, bodies ...interface{}) (*Response, error) {
 	rs, err := sendRequest(method, url, bodies...)
 	if err != nil {
 		return nil, err
 	}
 
-	esRs := &ESResponse{}
+	esRs := &Response{}
 	err = json.Unmarshal(rs, esRs)
 	if err != nil {
 		return nil, err

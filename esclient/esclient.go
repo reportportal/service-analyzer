@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -137,27 +138,27 @@ func (c *client) ListIndices() (*[]Index, error) {
 func (c *client) RecreateIndex(name string, force bool) {
 	exists, err := c.IndexExists(name)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	if exists {
 		if force {
 			dRs, err := c.DeleteIndex(name)
 			if err != nil {
-				fmt.Printf("Delete index error: %v\n", err)
+				log.Printf("Delete index error: %v\n", err)
 				return
 			}
-			fmt.Printf("Delete index response: %v\n", dRs)
+			log.Printf("Delete index response: %v\n", dRs)
 		} else {
 			return
 		}
 	}
 	cRs, err := c.CreateIndex(name)
 	if err != nil {
-		fmt.Printf("Create index error: %v\n", err)
+		log.Printf("Create index error: %v\n", err)
 		return
 	}
-	fmt.Printf("Create index response: %v\n", cRs)
+	log.Printf("Create index response: %v\n", cRs)
 }
 
 func (c *client) IndexExists(name string) (bool, error) {

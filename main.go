@@ -58,8 +58,12 @@ func main() {
 		})
 
 		router.HandleFunc(pat.Get("/"), func(w http.ResponseWriter, rq *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintln(w, "It Works!")
+			indices, err := c.ListIndices()
+			if err != nil {
+				commons.WriteJSON(http.StatusInternalServerError, err, w)
+			} else {
+				commons.WriteJSON(http.StatusOK, indices, w)
+			}
 		})
 
 		router.HandleFunc(pat.Delete("/:project"), func(w http.ResponseWriter, rq *http.Request) {

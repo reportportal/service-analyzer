@@ -20,4 +20,3 @@ vendor/*/
 # Intellij IDEA
 .idea/
 *.iml
-vendor/

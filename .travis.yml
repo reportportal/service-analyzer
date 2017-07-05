@@ -3,8 +3,7 @@ language: go
 go:
   - 1.8.3
 install:
-   - go get -v github.com/Masterminds/glide
-   - cd $GOPATH/src/github.com/Masterminds/glide && git checkout tags/0.12.3 && go install && cd -
+   - curl https://glide.sh/get | sh
    - glide install
 script: make build
 

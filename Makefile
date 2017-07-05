@@ -27,6 +27,9 @@ build: $(TARGET)
 clean:
 	@rm -f $(TARGET)
 
+test:
+	@go test
+
 install:
 	@go install $(LDFLAGS)
 

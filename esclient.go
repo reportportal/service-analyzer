@@ -156,49 +156,6 @@ func (c *client) ListIndices() (*[]Index, error) {
 	return indices, nil
 }
 
-func (c *client) RecreateIndex(name string, force bool) {
-	exists, err := c.IndexExists(name)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if exists {
-		if force {
-			dRs, err := c.DeleteIndex(name)
-			if err != nil {
-				log.Printf("Delete index error: %v\n", err)
-				return
-			}
-			log.Printf("Delete index response: %v\n", dRs)
-		} else {
-			return
-		}
-	}
-	cRs, err := c.CreateIndex(name)
-	if err != nil {
-		log.Printf("Create index error: %v\n", err)
-		return
-	}
-	log.Printf("Create index response: %v\n", cRs)
-}
-
-func (c *client) IndexExists(name string) (bool, error) {
-	url := c.buildURL(name)
-
-	httpClient := &http.Client{}
-	rs, err := httpClient.Head(url)
-	if err != nil {
-		return false, err
-	}
-
-	return rs.StatusCode == http.StatusOK, nil
-}
-
-func (c *client) DeleteIndex(name string) (*Response, error) {
-	url := c.buildURL(name)
-	return sendOpRequest("DELETE", url)
-}
-
 func (c *client) CreateIndex(name string) (*Response, error) {
 	body := map[string]interface{}{
 		"settings": map[string]interface{}{
@@ -231,6 +188,49 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 	url := c.buildURL(name)
 
 	return sendOpRequest("PUT", url, body)
+}
+
+func (c *client) IndexExists(name string) (bool, error) {
+	url := c.buildURL(name)
+
+	httpClient := &http.Client{}
+	rs, err := httpClient.Head(url)
+	if err != nil {
+		return false, err
+	}
+
+	return rs.StatusCode == http.StatusOK, nil
+}
+
+func (c *client) RecreateIndex(name string, force bool) {
+	exists, err := c.IndexExists(name)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if exists {
+		if force {
+			dRs, err := c.DeleteIndex(name)
+			if err != nil {
+				log.Printf("Delete index error: %v\n", err)
+				return
+			}
+			log.Printf("Delete index response: %v\n", dRs)
+		} else {
+			return
+		}
+	}
+	cRs, err := c.CreateIndex(name)
+	if err != nil {
+		log.Printf("Create index error: %v\n", err)
+		return
+	}
+	log.Printf("Create index response: %v\n", cRs)
+}
+
+func (c *client) DeleteIndex(name string) (*Response, error) {
+	url := c.buildURL(name)
+	return sendOpRequest("DELETE", url)
 }
 
 func (c *client) IndexLogs(name string, launch *Launch) (*Response, error) {

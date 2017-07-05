@@ -23,6 +23,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -457,6 +458,10 @@ func sendRequest(method, url string, bodies ...interface{}) ([]byte, error) {
 	rsBody, err := ioutil.ReadAll(rs.Body)
 	if err != nil {
 		return nil, err
+	}
+
+	if rs.StatusCode > http.StatusCreated && rs.StatusCode < http.StatusNotFound {
+		return nil, errors.New(string(rsBody))
 	}
 
 	return rsBody, nil

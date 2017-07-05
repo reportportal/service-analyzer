@@ -1,0 +1,98 @@
+hash: 69135b8541c418716e3b1f5eadfa6590dd7b118bfefe980fdab3668c187d0c0b
+updated: 2017-07-05T23:10:33.081098986+03:00
+imports:
+- name: github.com/cenkalti/backoff
+  version: 4dc77674aceaabba2c7e3da25d4c823edfb73f99
+- name: github.com/clbanning/x2j
+  version: 5ee34bb343f10ecfc125261107681de62f985cf6
+- name: github.com/franela/goreq
+  version: 9df54ca75ad62b6295f33ca96e16a2ca10bc137a
+- name: github.com/fsnotify/fsnotify
+  version: 4da3e2cfbabc9f751898f250b49f2439785783a1
+- name: github.com/gorilla/handlers
+  version: a4043c62cc2329bacda331d33fc908ab11ef0ec3
+- name: github.com/hashicorp/consul
+  version: f7907db85fdf47cb8431f8aefdaa5c9bef53a010
+  subpackages:
+  - api
+- name: github.com/hashicorp/go-cleanhttp
+  version: 3573b8b52aa7b37b9358d966a898feb387f62437
+- name: github.com/hashicorp/go-rootcerts
+  version: 6bb64b370b90e7ef1fa532be9e591a81c3493e00
+- name: github.com/hashicorp/hcl
+  version: 392dba7d905ed5d04a5794ba89f558b27e2ba1ca
+  subpackages:
+  - hcl/ast
+  - hcl/parser
+  - hcl/scanner
+  - hcl/strconv
+  - hcl/token
+  - json/parser
+  - json/scanner
+  - json/token
+- name: github.com/hashicorp/serf
+  version: 91fd53b1d3e624389ed9a295a3fa380e5c7b9dfc
+  subpackages:
+  - coordinate
+- name: github.com/hudl/fargo
+  version: b8c97836937cfa927268b01e1127d137d3da4a12
+- name: github.com/magiconair/properties
+  version: 51463bfca2576e06c62a8504b5c0f06d61312647
+- name: github.com/miekg/dns
+  version: f01e44c2fdbf755201344b5b7917f974a4badd13
+- name: github.com/mitchellh/go-homedir
+  version: b8bc1bf767474819792c23f32d8286a45736f1c6
+- name: github.com/mitchellh/mapstructure
+  version: d0303fe809921458f417bcf828397a65db30a7e4
+- name: github.com/op/go-logging
+  version: d2e44aa77b7195c0ef782189985dd8550e22e4de
+- name: github.com/pelletier/go-toml
+  version: 69d355db5304c0f7f809a2edc054553e7142f016
+- name: github.com/reportportal/commons-go
+  version: e82d4fe36aa4e93a35b793850a9cdaec61d785f2
+  subpackages:
+  - commons
+  - conf
+  - registry
+  - server
+- name: github.com/spf13/afero
+  version: 9be650865eab0c12963d8753212f4f9c66cdcf12
+  subpackages:
+  - mem
+- name: github.com/spf13/cast
+  version: acbeb36b902d72a7a4c18e8f3241075e7ab763e4
+- name: github.com/spf13/jwalterweatherman
+  version: 0efa5202c04663c757d84f90f5219c1250baf94f
+- name: github.com/spf13/pflag
+  version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
+- name: github.com/spf13/viper
+  version: c1de95864d73a5465492829d7cb2dd422b19ac96
+- name: goji.io
+  version: 0d89ff54b2c18c9c4ba530e32496aef902d3c6cd
+  subpackages:
+  - internal
+  - middleware
+  - pat
+  - pattern
+- name: golang.org/x/net
+  version: 570fa1c91359c1869590e9cedf3b53162a51a167
+  subpackages:
+  - context
+- name: golang.org/x/sys
+  version: 6faef541c73732f438fb660a212750a9ba9f9362
+  subpackages:
+  - unix
+- name: golang.org/x/text
+  version: 2bf8f2a19ec09c670e931282edfe6567f6be21c9
+  subpackages:
+  - transform
+  - unicode/norm
+- name: gopkg.in/gcfg.v1
+  version: 0ef1a8547f99b94fac9af5377dd72febba18f37c
+  subpackages:
+  - scanner
+  - token
+  - types
+- name: gopkg.in/yaml.v2
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
+testImports: []

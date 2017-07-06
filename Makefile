@@ -1,51 +1,59 @@
-SHELL := /bin/bash
+.DEFAULT_GOAL := build
 
-# The name of the executable (default is current directory name)
-TARGET := $(shell echo $${PWD\#\#*/})
-.DEFAULT_GOAL: $(TARGET)
+COMMIT_HASH = `git rev-parse --short HEAD 2>/dev/null`
+BUILD_DATE = `date +%FT%T%z`
 
-# These will be provided to the target
-VERSION := 1.0.0
-BUILD := `git rev-parse HEAD`
+GO = go
+BINARY_DIR=bin
 
-# Use linker flags to provide version/build settings to the target
-LDFLAGS=-ldflags "-X=main.Version=$(VERSION) -X=main.Build=$(BUILD)"
+BUILD_DEPS:= github.com/alecthomas/gometalinter
+GODIRS_NOVENDOR = $(shell go list ./... | grep -v /vendor/)
+GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
+PACKAGE_COMMONS=github.com/reportportal/service-analyzer/vendor/github.com/reportportal/commons-go
 
-# go source files, ignore vendor directory
-SRC = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
+BUILD_INFO_LDFLAGS=-ldflags "-X ${PACKAGE_COMMONS}/commons.branch=${COMMIT_HASH} -X ${PACKAGE_COMMONS}/commons.buildDate=${BUILD_DATE} -X ${PACKAGE_COMMONS}/commons.version=${v}"
+IMAGE_NAME=reportportal/service-analyzer$(IMAGE_POSTFIX)
 
-.PHONY: all build clean install uninstall fmt simplify check run
+.PHONY: vendor test build
 
-all: check install
+help:
+	@echo "build      - go build"
+	@echo "test       - go test"
+	@echo "checkstyle - gofmt+golint+misspell"
 
-$(TARGET): $(SRC)
-	@go build $(LDFLAGS) -o $(TARGET)
+vendor: ## Install glide dependencies
+	glide install
 
-build: $(TARGET)
-	@true
+get-build-deps: vendor
+	$(GO) get $(BUILD_DEPS)
+	gometalinter --install
 
-clean:
-	@rm -f $(TARGET)
+test: vendor
+	go test $(glide novendor)
 
-test:
-	@go test
-
-install:
-	@go install $(LDFLAGS)
-
-uninstall: clean
-	@rm -f $$(which ${TARGET})
+checkstyle: get-build-deps
+	gometalinter --vendor ./... --fast --disable=gas --disable=errcheck --disable=gotype --deadline 10m
 
 fmt:
-	@gofmt -l -w $(SRC)
+	gofmt -l -w -s ${GOFILES_NOVENDOR}
 
-simplify:
-	@gofmt -s -l -w $(SRC)
 
-check:
-	@test -z $(shell gofmt -l main.go | tee /dev/stderr) || echo "[WARN] Fix formatting issues with 'make fmt'"
-	@for d in $$(go list ./... | grep -v /vendor/); do golint $${d}; done
-	@go tool vet ${SRC}
+# Builds server
+build: checkstyle test
+	CGO_ENABLED=0 GOOS=linux $(GO) build ${BUILD_INFO_LDFLAGS} -o ${BINARY_DIR}/service-analyzer ./
 
-run: install
-	@$(TARGET)
+# Builds the container
+build-image:
+	docker build -t "$(IMAGE_NAME)" -f Dockerfile .
+
+
+# Builds the container and pushes to private registry
+pushDev:
+	echo "Registry is not provided"
+	if [ -d ${REGISTRY} ] ; then echo "Provide registry"; exit 1 ; fi
+	docker tag "$(IMAGE_NAME)" "$(REGISTRY)/$(IMAGE_NAME):latest"
+	docker push "$(REGISTRY)/$(IMAGE_NAME):latest"
+
+clean:
+	if [ -d ${BINARY_DIR} ] ; then rm -r ${BINARY_DIR} ; fi
+	if [ -d 'build' ] ; then rm -r 'build' ; fi

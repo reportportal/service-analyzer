@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"fmt"
+	"encoding/json"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -48,12 +50,12 @@ const IndexAlreadyExistsResponse = `
 	{
 		"error" : {
 			"root_cause" : [
-			{
-				"type" : "index_already_exists_exception",
-				"reason" : "index [idx1/DoA20IojS72IdaFSN8CX9Q] already exists",
-				"index_uuid" : "DoA20IojS72IdaFSN8CX9Q",
-				"index" : "idx1"
-			}
+				{
+					"type" : "index_already_exists_exception",
+					"reason" : "index [idx1/DoA20IojS72IdaFSN8CX9Q] already exists",
+					"index_uuid" : "DoA20IojS72IdaFSN8CX9Q",
+					"index" : "idx1"
+				}
 			],
 			"type" : "index_already_exists_exception",
 			"reason" : "index [idx1/DoA20IojS72IdaFSN8CX9Q] already exists",
@@ -89,6 +91,73 @@ const IndexNotFoundResponse = `
 			"index" : "idx1"
 		},
 		"status" : 404
+	}`
+
+const LaunchWithoutTestItems = `
+	{
+		"launchId": "1234567890",
+		"launchName": "Launch without test items",
+		"testItems": []
+	}`
+
+const LaunchWithTestItemsWithoutLogs = `
+	{
+		"launchId": "1234567891",
+		"launchName": "Launch with test items without logs",
+		"testItems": [
+			{
+				"testItemId": "0001",
+				"issueType": "TI001",
+				"logs": []
+			}
+		]
+	}`
+
+const LaunchWithTestItemsWithLogs = `
+	{
+		"launchId": "1234567892",
+		"launchName": "Launch with test items with logs",
+		"testItems": [
+			{
+				"testItemId": "0002",
+				"issueType": "TI001",
+				"logs": [
+					{
+						"logId": "0001",
+						"logLevel": 40000,
+						"message": "Message 1"
+					}
+				]
+			}
+		]
+	}`
+
+const LogIndexRequest = `{"index":{"_id":"0001","_index":"idx2","_type":"log"}}
+{"issue_type":"TI001","launch_name":"Launch with test items with logs","log_level":40000,"message":"Message ","test_item":"0002"}
+`
+
+const LogIndexResponse = `
+	{
+		"took" : 63,
+		"errors" : false,
+		"items" : [
+			{
+				"index" : {
+					"_index" : "idx2",
+					"_type" : "log",
+					"_id" : "0001",
+					"_version" : 1,
+					"result" : "created",
+					"_shards" : {
+						"total" : 2,
+						"successful" : 1,
+						"failed" : 0
+					},
+					"created" : true,
+					"status" : 201
+				}
+			}
+		]
 	}`
 
 func TestListIndices(t *testing.T) {
@@ -240,6 +309,7 @@ func TestDeleteIndex(t *testing.T) {
 	for _, test := range tests {
 		indexName := test.params["indexName"].(string)
 		ts := startServer(t, "DELETE", "/"+indexName, test.params)
+		defer ts.Close()
 		c := NewClient(ts.URL)
 
 		rs, err := c.DeleteIndex(indexName)
@@ -249,13 +319,67 @@ func TestDeleteIndex(t *testing.T) {
 }
 
 func TestIndexLogs(t *testing.T) {
+	tests := []struct {
+		params           map[string]interface{}
+		indexRequest     string
+		expectServerCall bool
+	}{
+		{
+			params: map[string]interface{}{
+				"indexName": "idx0",
+			},
+			indexRequest:     LaunchWithoutTestItems,
+			expectServerCall: false,
+		},
+		{
+			params: map[string]interface{}{
+				"indexName": "idx1",
+			},
+			indexRequest:     LaunchWithTestItemsWithoutLogs,
+			expectServerCall: false,
+		},
+		{
+			params: map[string]interface{}{
+				"indexName":  "idx2",
+				"request":    LogIndexRequest,
+				"response":   LogIndexResponse,
+				"statusCode": http.StatusOK,
+			},
+			indexRequest:     LaunchWithTestItemsWithLogs,
+			expectServerCall: true,
+		},
+	}
 
+	for _, test := range tests {
+		var esURL string
+		indexName := test.params["indexName"].(string)
+		if test.expectServerCall {
+			ts := startServer(t, "PUT", "/_bulk", test.params)
+			defer ts.Close()
+			esURL = ts.URL
+		}
+		c := NewClient(esURL)
+
+		launch := &Launch{}
+		err := json.Unmarshal([]byte(test.indexRequest), launch)
+		assert.NoError(t, err)
+
+		_, err = c.IndexLogs(indexName, launch)
+		assert.NoError(t, err)
+	}
 }
 
 func startServer(t *testing.T, expectedMethod string, expectedURI string, params map[string]interface{}) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, expectedMethod, r.Method)
 		assert.Equal(t, expectedURI, r.URL.RequestURI())
+		expectedRq, ok := params["request"]
+		if ok {
+			defer r.Body.Close()
+			rq, err := ioutil.ReadAll(r.Body)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedRq, string(rq))
+		}
 		w.WriteHeader(params["statusCode"].(int))
 		rs, ok := params["response"]
 		if ok {

@@ -12,7 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const TwoIndicesResponse = `
+const (
+	TwoIndicesRs = `
 	[
 		{
 			"health": "yellow",
@@ -39,14 +40,12 @@ const TwoIndicesResponse = `
 			"pri.store.size": "11.2mb"
 		}
 	]`
-
-const IndexCreatedResponse = `
+	IndexCreatedRs = `
 	{
 		"acknowledged" : true,
 		"shards_acknowledged" : true
 	}`
-
-const IndexAlreadyExistsResponse = `
+	IndexAlreadyExistsRs = `
 	{
 		"error" : {
 			"root_cause" : [
@@ -64,13 +63,11 @@ const IndexAlreadyExistsResponse = `
 		},
 		"status" : 400
 	}`
-
-const IndexDeletedResponse = `
+	IndexDeletedRs = `
 	{
 		"acknowledged" : true
 	}`
-
-const IndexNotFoundResponse = `
+	IndexNotFoundRs = `
 	{
 		"error" : {
 			"root_cause" : [
@@ -92,15 +89,13 @@ const IndexNotFoundResponse = `
 		},
 		"status" : 404
 	}`
-
-const LaunchWithoutTestItems = `
+	LaunchWoTestItems = `
 	{
 		"launchId": "1234567890",
 		"launchName": "Launch without test items",
 		"testItems": []
 	}`
-
-const LaunchWithTestItemsWithoutLogs = `
+	LaunchWTestItemsWoLogs = `
 	{
 		"launchId": "1234567891",
 		"launchName": "Launch with test items without logs",
@@ -112,8 +107,7 @@ const LaunchWithTestItemsWithoutLogs = `
 			}
 		]
 	}`
-
-const LaunchWithTestItemsWithLogs = `
+	LaunchWTestItemsWLogs = `
 	{
 		"launchId": "1234567892",
 		"launchName": "Launch with test items with logs",
@@ -126,17 +120,22 @@ const LaunchWithTestItemsWithLogs = `
 						"logId": "0001",
 						"logLevel": 40000,
 						"message": "Message 1"
+					},
+					{
+						"logId": "0002",
+						"logLevel": 40000,
+						"message": "Message 2"
 					}
 				]
 			}
 		]
 	}`
-
-const LogIndexRequest = `{"index":{"_id":"0001","_index":"idx2","_type":"log"}}
+	IndexLogsRq = `{"index":{"_id":"0001","_index":"idx2","_type":"log"}}
+{"issue_type":"TI001","launch_name":"Launch with test items with logs","log_level":40000,"message":"Message ","test_item":"0002"}
+{"index":{"_id":"0002","_index":"idx2","_type":"log"}}
 {"issue_type":"TI001","launch_name":"Launch with test items with logs","log_level":40000,"message":"Message ","test_item":"0002"}
 `
-
-const LogIndexResponse = `
+	IndexLogsRs = `
 	{
 		"took" : 63,
 		"errors" : false,
@@ -159,6 +158,38 @@ const LogIndexResponse = `
 			}
 		]
 	}`
+	SearchRq = `{"query":{"bool":{"must":[{"term":{"log_level":40000}},{"exists":{"field":"issue_type"}},{"more_like_this":{"fields":["message"],"like":"Message ","minimum_should_match":"90%"}}],"must_not":{"wildcard":{"issue_type":"TI*"}},"should":{"term":{"launch_name":{"boost":2,"value":"Launch with test items with logs"}}}}},"size":10}
+`
+	SearchRs = `
+	{
+		"took" : 13,
+		"timed_out" : false,
+		"_shards" : {
+			"total" : 1,
+			"successful" : 1,
+			"failed" : 0
+		},
+		"hits" : {
+			"total" : 1,
+			"max_score" : 10,
+			"hits" : [
+			{
+				"_index" : "ocm-hbr",
+				"_type" : "log",
+				"_id" : "0001",
+				"_score" : 10,
+				"_source" : {
+				"issue_type" : "AB001",
+				"launch_name" : "Launch 1",
+				"log_level" : 40000,
+				"message" : "Message",
+				"test_item" : "0001"
+				}
+			}
+			]
+		}
+	}`
+)
 
 func TestListIndices(t *testing.T) {
 	tests := []struct {
@@ -177,7 +208,7 @@ func TestListIndices(t *testing.T) {
 		{
 			params: map[string]interface{}{
 				"statusCode": http.StatusOK,
-				"response":   TwoIndicesResponse,
+				"response":   TwoIndicesRs,
 			},
 			expectedCount: 2,
 			expectErr:     false,
@@ -220,7 +251,7 @@ func TestCreateIndex(t *testing.T) {
 			params: map[string]interface{}{
 				"indexName":  "idx0",
 				"statusCode": http.StatusOK,
-				"response":   IndexCreatedResponse,
+				"response":   IndexCreatedRs,
 			},
 			expectErr: false,
 		},
@@ -228,7 +259,7 @@ func TestCreateIndex(t *testing.T) {
 			params: map[string]interface{}{
 				"indexName":  "idx1",
 				"statusCode": http.StatusBadRequest,
-				"response":   IndexAlreadyExistsResponse,
+				"response":   IndexAlreadyExistsRs,
 			},
 			expectErr: true,
 		},
@@ -292,7 +323,7 @@ func TestDeleteIndex(t *testing.T) {
 			params: map[string]interface{}{
 				"indexName":  "idx0",
 				"statusCode": http.StatusOK,
-				"response":   IndexDeletedResponse,
+				"response":   IndexDeletedRs,
 			},
 			expectedStatus: 0,
 		},
@@ -300,7 +331,7 @@ func TestDeleteIndex(t *testing.T) {
 			params: map[string]interface{}{
 				"indexName":  "idx1",
 				"statusCode": http.StatusNotFound,
-				"response":   IndexNotFoundResponse,
+				"response":   IndexNotFoundRs,
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -328,24 +359,24 @@ func TestIndexLogs(t *testing.T) {
 			params: map[string]interface{}{
 				"indexName": "idx0",
 			},
-			indexRequest:     LaunchWithoutTestItems,
+			indexRequest:     LaunchWoTestItems,
 			expectServerCall: false,
 		},
 		{
 			params: map[string]interface{}{
 				"indexName": "idx1",
 			},
-			indexRequest:     LaunchWithTestItemsWithoutLogs,
+			indexRequest:     LaunchWTestItemsWoLogs,
 			expectServerCall: false,
 		},
 		{
 			params: map[string]interface{}{
 				"indexName":  "idx2",
-				"request":    LogIndexRequest,
-				"response":   LogIndexResponse,
+				"request":    IndexLogsRq,
+				"response":   IndexLogsRs,
 				"statusCode": http.StatusOK,
 			},
-			indexRequest:     LaunchWithTestItemsWithLogs,
+			indexRequest:     LaunchWTestItemsWLogs,
 			expectServerCall: true,
 		},
 	}
@@ -365,6 +396,57 @@ func TestIndexLogs(t *testing.T) {
 		assert.NoError(t, err)
 
 		_, err = c.IndexLogs(indexName, launch)
+		assert.NoError(t, err)
+	}
+}
+
+func TestAnalyzeLogs(t *testing.T) {
+	tests := []struct {
+		params          map[string]interface{}
+		analyzeRequest  string
+		serverCallCount int
+	}{
+		{
+			params: map[string]interface{}{
+				"indexName": "idx0",
+			},
+			analyzeRequest:  LaunchWoTestItems,
+			serverCallCount: 0,
+		},
+		{
+			params: map[string]interface{}{
+				"indexName": "idx1",
+			},
+			analyzeRequest:  LaunchWTestItemsWoLogs,
+			serverCallCount: 0,
+		},
+		{
+			params: map[string]interface{}{
+				"indexName":  "idx2",
+				"request":    SearchRq,
+				"response":   SearchRs,
+				"statusCode": http.StatusOK,
+			},
+			analyzeRequest:  LaunchWTestItemsWLogs,
+			serverCallCount: 2,
+		},
+	}
+
+	for _, test := range tests {
+		var esURL string
+		indexName := test.params["indexName"].(string)
+		if test.serverCallCount > 0 {
+			ts := startServer(t, "GET", "/"+indexName+"/log/_search", test.params)
+			defer ts.Close()
+			esURL = ts.URL
+		}
+		c := NewClient(esURL)
+
+		launch := &Launch{}
+		err := json.Unmarshal([]byte(test.analyzeRequest), launch)
+		assert.NoError(t, err)
+
+		_, err = c.AnalyzeLogs(indexName, launch)
 		assert.NoError(t, err)
 	}
 }

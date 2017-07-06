@@ -160,7 +160,7 @@ const (
 	}`
 	SearchRq = `{"query":{"bool":{"must":[{"term":{"log_level":40000}},{"exists":{"field":"issue_type"}},{"more_like_this":{"fields":["message"],"like":"Message ","minimum_should_match":"90%"}}],"must_not":{"wildcard":{"issue_type":"TI*"}},"should":{"term":{"launch_name":{"boost":2,"value":"Launch with test items with logs"}}}}},"size":10}
 `
-	SearchRs = `
+	OneHitSearchRs = `
 	{
 		"took" : 13,
 		"timed_out" : false,
@@ -173,19 +173,116 @@ const (
 			"total" : 1,
 			"max_score" : 10,
 			"hits" : [
-			{
-				"_index" : "ocm-hbr",
-				"_type" : "log",
-				"_id" : "0001",
-				"_score" : 10,
-				"_source" : {
-				"issue_type" : "AB001",
-				"launch_name" : "Launch 1",
-				"log_level" : 40000,
-				"message" : "Message",
-				"test_item" : "0001"
+				{
+					"_index" : "idx2",
+					"_type" : "log",
+					"_id" : "0001",
+					"_score" : 10,
+					"_source" : {
+						"issue_type" : "AB001",
+						"launch_name" : "Launch 1",
+						"log_level" : 40000,
+						"message" : "Message AB",
+						"test_item" : "0001"
+					}
 				}
-			}
+			]
+		}
+	}`
+	TwoHitsSearchRs = `
+	{
+		"took" : 13,
+		"timed_out" : false,
+		"_shards" : {
+			"total" : 1,
+			"successful" : 1,
+			"failed" : 0
+		},
+		"hits" : {
+			"total" : 2,
+			"max_score" : 15,
+			"hits" : [
+				{
+					"_index" : "idx3",
+					"_type" : "log",
+					"_id" : "0001",
+					"_score" : 15,
+					"_source" : {
+						"issue_type" : "AB001",
+						"launch_name" : "Launch 1",
+						"log_level" : 40000,
+						"message" : "Message AB",
+						"test_item" : "0001"
+					}
+				},
+				{
+					"_index" : "idx3",
+					"_type" : "log",
+					"_id" : "0002",
+					"_score" : 10,
+					"_source" : {
+						"issue_type" : "PB001",
+						"launch_name" : "Launch 1",
+						"log_level" : 40000,
+						"message" : "Message PB",
+						"test_item" : "0001"
+					}
+				}
+			]
+		}
+	}`
+	ThreeHitsSearchRs = `
+	{
+		"took" : 13,
+		"timed_out" : false,
+		"_shards" : {
+			"total" : 1,
+			"successful" : 1,
+			"failed" : 0
+		},
+		"hits" : {
+			"total" : 2,
+			"max_score" : 20,
+			"hits" : [
+				{
+					"_index" : "idx4",
+					"_type" : "log",
+					"_id" : "0001",
+					"_score" : 15,
+					"_source" : {
+						"issue_type" : "AB001",
+						"launch_name" : "Launch 1",
+						"log_level" : 40000,
+						"message" : "Message AB",
+						"test_item" : "0001"
+					}
+				},
+				{
+					"_index" : "idx4",
+					"_type" : "log",
+					"_id" : "0002",
+					"_score" : 10,
+					"_source" : {
+						"issue_type" : "PB001",
+						"launch_name" : "Launch 1",
+						"log_level" : 40000,
+						"message" : "Message PB",
+						"test_item" : "0001"
+					}
+				},
+				{
+					"_index" : "idx4",
+					"_type" : "log",
+					"_id" : "0003",
+					"_score" : 10,
+					"_source" : {
+						"issue_type" : "PB001",
+						"launch_name" : "Launch 1",
+						"log_level" : 40000,
+						"message" : "Message PB",
+						"test_item" : "0001"
+					}
+				}
 			]
 		}
 	}`
@@ -216,7 +313,6 @@ func TestListIndices(t *testing.T) {
 		{
 			params: map[string]interface{}{
 				"statusCode": http.StatusInternalServerError,
-				"response":   "{}",
 			},
 			expectedCount: 0,
 			expectErr:     true,
@@ -402,33 +498,55 @@ func TestIndexLogs(t *testing.T) {
 
 func TestAnalyzeLogs(t *testing.T) {
 	tests := []struct {
-		params          map[string]interface{}
-		analyzeRequest  string
-		serverCallCount int
+		params            map[string]interface{}
+		analyzeRequest    string
+		expectedIssueType string
+		serverCallCount   int
 	}{
 		{
 			params: map[string]interface{}{
 				"indexName": "idx0",
 			},
-			analyzeRequest:  LaunchWoTestItems,
-			serverCallCount: 0,
+			analyzeRequest: LaunchWoTestItems,
 		},
 		{
 			params: map[string]interface{}{
 				"indexName": "idx1",
 			},
-			analyzeRequest:  LaunchWTestItemsWoLogs,
-			serverCallCount: 0,
+			analyzeRequest: LaunchWTestItemsWoLogs,
 		},
 		{
 			params: map[string]interface{}{
 				"indexName":  "idx2",
 				"request":    SearchRq,
-				"response":   SearchRs,
+				"response":   OneHitSearchRs,
 				"statusCode": http.StatusOK,
 			},
-			analyzeRequest:  LaunchWTestItemsWLogs,
-			serverCallCount: 2,
+			analyzeRequest:    LaunchWTestItemsWLogs,
+			expectedIssueType: "AB001",
+			serverCallCount:   2,
+		},
+		{
+			params: map[string]interface{}{
+				"indexName":  "idx3",
+				"request":    SearchRq,
+				"response":   TwoHitsSearchRs,
+				"statusCode": http.StatusOK,
+			},
+			analyzeRequest:    LaunchWTestItemsWLogs,
+			expectedIssueType: "AB001",
+			serverCallCount:   2,
+		},
+		{
+			params: map[string]interface{}{
+				"indexName":  "idx4",
+				"request":    SearchRq,
+				"response":   ThreeHitsSearchRs,
+				"statusCode": http.StatusOK,
+			},
+			analyzeRequest:    LaunchWTestItemsWLogs,
+			expectedIssueType: "PB001",
+			serverCallCount:   2,
 		},
 	}
 
@@ -446,8 +564,12 @@ func TestAnalyzeLogs(t *testing.T) {
 		err := json.Unmarshal([]byte(test.analyzeRequest), launch)
 		assert.NoError(t, err)
 
-		_, err = c.AnalyzeLogs(indexName, launch)
+		launch, err = c.AnalyzeLogs(indexName, launch)
 		assert.NoError(t, err)
+
+		if test.expectedIssueType != "" {
+			assert.Equal(t, test.expectedIssueType, launch.TestItems[0].IssueType)
+		}
 	}
 }
 

@@ -1,5 +1,5 @@
-hash: 69135b8541c418716e3b1f5eadfa6590dd7b118bfefe980fdab3668c187d0c0b
-updated: 2017-07-05T23:10:33.081098986+03:00
+hash: 04475dea740bda214bdf40420652427b9c16fc1cb9f9613052f5e62c7c6127bc
+updated: 2017-07-06T14:23:34.742339803+03:00
 imports:
 - name: github.com/cenkalti/backoff
   version: 4dc77674aceaabba2c7e3da25d4c823edfb73f99
@@ -95,4 +95,16 @@ imports:
   - types
 - name: gopkg.in/yaml.v2
   version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
-testImports: []
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert

@@ -40,7 +40,7 @@ type ESClient interface {
 	IndexExists(name string) (bool, error)
 	DeleteIndex(name string) (*Response, error)
 	RecreateIndex(name string, force bool)
-	IndexLogs(name string, launch *Launch) (*Response, error)
+	IndexLogs(name string, launch *Launch) (*BulkResponse, error)
 	AnalyzeLogs(name string, launch *Launch) (*Launch, error)
 
 	buildURL(pathElements ...string) string
@@ -58,6 +58,24 @@ type Response struct {
 		Type   string `json:"type"`
 		Reason string `json:"reason"`
 	} `json:"error"`
+	Status int `json:"status"`
+}
+
+// BulkResponse struct
+type BulkResponse struct {
+	Took   int  `json:"took"`
+	Errors bool `json:"errors"`
+	Items  []struct {
+		Index struct {
+			Index   string `json:"_index"`
+			Type    string `json:"_type"`
+			ID      string `json:"_id"`
+			Version int    `json:"_version"`
+			Result  string `json:"result"`
+		} `json:"index"`
+		Created bool   `json:"created"`
+		Status  string `json:"status"`
+	} `json:"items"`
 	Status int `json:"status"`
 }
 
@@ -140,13 +158,9 @@ func (rs *Response) String() string {
 func (c *client) ListIndices() (*[]Index, error) {
 	url := c.buildURL("_cat", "indices?format=json")
 
-	rs, err := sendRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	indices := &[]Index{}
-	err = json.Unmarshal(rs, indices)
+
+	err := sendOpRequest("GET", url, indices)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +201,8 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 
 	url := c.buildURL(name)
 
-	return sendOpRequest("PUT", url, body)
+	rs := &Response{}
+	return rs, sendOpRequest("PUT", url, rs, body)
 }
 
 func (c *client) IndexExists(name string) (bool, error) {
@@ -230,10 +245,11 @@ func (c *client) RecreateIndex(name string, force bool) {
 
 func (c *client) DeleteIndex(name string) (*Response, error) {
 	url := c.buildURL(name)
-	return sendOpRequest("DELETE", url)
+	rs := &Response{}
+	return rs, sendOpRequest("DELETE", url, rs)
 }
 
-func (c *client) IndexLogs(name string, launch *Launch) (*Response, error) {
+func (c *client) IndexLogs(name string, launch *Launch) (*BulkResponse, error) {
 	indexType := "log"
 
 	var bodies []interface{}
@@ -265,13 +281,15 @@ func (c *client) IndexLogs(name string, launch *Launch) (*Response, error) {
 		}
 	}
 
+	rs := &BulkResponse{}
+
 	if len(bodies) == 0 {
-		return &Response{}, nil
+		return rs, nil
 	}
 
 	url := c.buildURL("_bulk")
 
-	return sendOpRequest("PUT", url, bodies...)
+	return rs, sendOpRequest("PUT", url, rs, bodies...)
 }
 
 func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
@@ -286,28 +304,22 @@ func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
 
 			query := buildQuery(launch.LaunchName, message)
 
-			rs, err := sendRequest("GET", url, query)
-
-			if err != nil {
-				return nil, err
-			}
-
-			esRs := &SearchResult{}
-			err = json.Unmarshal(rs, esRs)
+			rs := &SearchResult{}
+			err := sendOpRequest("GET", url, rs, query)
 			if err != nil {
 				return nil, err
 			}
 
 			// Two iterations over hits needed
 			// to achieve stable prediction
-			if esRs.Hits.Total > 0 {
+			if rs.Hits.Total > 0 {
 				k := 10
-				n := len(esRs.Hits.Hits)
+				n := len(rs.Hits.Hits)
 				if n < k {
 					k = n
 				}
 				totalScore := 0.0
-				hits := esRs.Hits.Hits[:k]
+				hits := rs.Hits.Hits[:k]
 				for _, h := range hits {
 					totalScore += h.Score
 				}
@@ -410,19 +422,18 @@ func buildQuery(launchName, logMessage string) interface{} {
 	}
 }
 
-func sendOpRequest(method, url string, bodies ...interface{}) (*Response, error) {
+func sendOpRequest(method, url string, response interface{}, bodies ...interface{}) error {
 	rs, err := sendRequest(method, url, bodies...)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	esRs := &Response{}
-	err = json.Unmarshal(rs, esRs)
+	err = json.Unmarshal(rs, &response)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return esRs, nil
+	return nil
 }
 
 func sendRequest(method, url string, bodies ...interface{}) ([]byte, error) {

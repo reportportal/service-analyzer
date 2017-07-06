@@ -334,24 +334,6 @@ func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
 					issueTypes[h.Source.IssueType] = typeScore
 				}
 			}
-
-			// if esRs.Hits.Total > 0 {
-			// 	k := 10
-			// 	n := len(esRs.Hits.Hits)
-			// 	if n < k {
-			// 		k = n
-			// 	}
-			// 	hits := esRs.Hits.Hits[:k]
-			// 	for _, h := range hits {
-			// 		score, ok := issueTypes[h.Source.IssueType]
-			// 		if ok {
-			// 			score += 1.0
-			// 		} else {
-			// 			score = 1.0
-			// 		}
-			// 		issueTypes[h.Source.IssueType] = score
-			// 	}
-			// }
 		}
 
 		var predictedIssueType string

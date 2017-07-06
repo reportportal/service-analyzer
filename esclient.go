@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -39,7 +38,6 @@ type ESClient interface {
 	CreateIndex(name string) (*Response, error)
 	IndexExists(name string) (bool, error)
 	DeleteIndex(name string) (*Response, error)
-	RecreateIndex(name string, force bool)
 	IndexLogs(name string, launch *Launch) (*BulkResponse, error)
 	AnalyzeLogs(name string, launch *Launch) (*Launch, error)
 
@@ -217,32 +215,6 @@ func (c *client) IndexExists(name string) (bool, error) {
 	return rs.StatusCode == http.StatusOK, nil
 }
 
-func (c *client) RecreateIndex(name string, force bool) {
-	exists, err := c.IndexExists(name)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if exists {
-		if force {
-			dRs, err := c.DeleteIndex(name)
-			if err != nil {
-				log.Printf("Delete index error: %v\n", err)
-				return
-			}
-			log.Printf("Delete index response: %v\n", dRs)
-		} else {
-			return
-		}
-	}
-	cRs, err := c.CreateIndex(name)
-	if err != nil {
-		log.Printf("Create index error: %v\n", err)
-		return
-	}
-	log.Printf("Create index response: %v\n", cRs)
-}
-
 func (c *client) DeleteIndex(name string) (*Response, error) {
 	url := c.buildURL(name)
 	rs := &Response{}
@@ -310,30 +282,7 @@ func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
 				return nil, err
 			}
 
-			// Two iterations over hits needed
-			// to achieve stable prediction
-			if rs.Hits.Total > 0 {
-				k := 10
-				n := len(rs.Hits.Hits)
-				if n < k {
-					k = n
-				}
-				totalScore := 0.0
-				hits := rs.Hits.Hits[:k]
-				for _, h := range hits {
-					totalScore += h.Score
-				}
-				for _, h := range hits {
-					typeScore, ok := issueTypes[h.Source.IssueType]
-					score := h.Score / totalScore
-					if ok {
-						typeScore += score
-					} else {
-						typeScore = score
-					}
-					issueTypes[h.Source.IssueType] = typeScore
-				}
-			}
+			calculateScores(rs, 10, issueTypes)
 		}
 
 		var predictedIssueType string
@@ -401,6 +350,32 @@ func buildQuery(launchName, logMessage string) interface{} {
 				},
 			},
 		},
+	}
+}
+
+func calculateScores(rs *SearchResult, k int, issueTypes map[string]float64) {
+	if rs.Hits.Total > 0 {
+		n := len(rs.Hits.Hits)
+		if n < k {
+			k = n
+		}
+		totalScore := 0.0
+		hits := rs.Hits.Hits[:k]
+		// Two iterations over hits needed
+		// to achieve stable prediction
+		for _, h := range hits {
+			totalScore += h.Score
+		}
+		for _, h := range hits {
+			typeScore, ok := issueTypes[h.Source.IssueType]
+			score := h.Score / totalScore
+			if ok {
+				typeScore += score
+			} else {
+				typeScore = score
+			}
+			issueTypes[h.Source.IssueType] = typeScore
+		}
 	}
 }
 

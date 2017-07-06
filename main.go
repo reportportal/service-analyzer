@@ -81,7 +81,7 @@ func main() {
 		router.HandleFunc(pat.Post("/:project/_index"), func(w http.ResponseWriter, rq *http.Request) {
 			project := pat.Param(rq, "project")
 
-			c.RecreateIndex(project, false)
+			createIndexIfNotExists(project, c)
 
 			handleLauchRequest(w, rq,
 				func(launch *Launch) (interface{}, error) {
@@ -133,4 +133,15 @@ func readRequestBody(rq *http.Request) (*Launch, error) {
 	}
 
 	return launch, err
+}
+
+func createIndexIfNotExists(indexName string, c ESClient) error {
+	exists, err := c.IndexExists(indexName)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		_, err = c.CreateIndex(indexName)
+	}
+	return err
 }

@@ -180,6 +180,21 @@ const (
 	}`
 	SearchRq = `{"query":{"bool":{"must":[{"term":{"log_level":40000}},{"exists":{"field":"issue_type"}},{"more_like_this":{"fields":["message"],"like":"Message ","minimum_should_match":"90%"}}],"must_not":{"wildcard":{"issue_type":"TI*"}},"should":{"term":{"launch_name":{"boost":2,"value":"Launch with test items with logs"}}}}},"size":10}
 `
+	NoHitSearchRs = `
+	{
+		"took" : 13,
+		"timed_out" : false,
+		"_shards" : {
+			"total" : 1,
+			"successful" : 1,
+			"failed" : 0
+		},
+		"hits" : {
+			"total" : 0,
+			"max_score" : null,
+			"hits" : []
+		}
+	}`
 	OneHitSearchRs = `
 	{
 		"took" : 13,
@@ -534,6 +549,17 @@ func TestAnalyzeLogs(t *testing.T) {
 				"indexName": "idx1",
 			},
 			analyzeRequest: LaunchWTestItemsWoLogs,
+		},
+		{
+			params: map[string]interface{}{
+				"indexName":  "idx2",
+				"request":    SearchRq,
+				"response":   NoHitSearchRs,
+				"statusCode": http.StatusOK,
+			},
+			analyzeRequest:    LaunchWTestItemsWLogs,
+			expectedIssueType: "",
+			serverCallCount:   2,
 		},
 		{
 			params: map[string]interface{}{

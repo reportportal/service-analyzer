@@ -47,87 +47,87 @@ type ESClient interface {
 
 // Response struct
 type Response struct {
-	Acknowledged bool `json:"acknowledged"`
+	Acknowledged bool `json:"acknowledged,omitempty"`
 	Error        struct {
 		RootCause []struct {
-			Type   string `json:"type"`
-			Reason string `json:"reason"`
-		} `json:"root_cause"`
-		Type   string `json:"type"`
-		Reason string `json:"reason"`
-	} `json:"error"`
-	Status int `json:"status"`
+			Type   string `json:"type,omitempty"`
+			Reason string `json:"reason,omitempty"`
+		} `json:"root_cause,omitempty"`
+		Type   string `json:"type,omitempty"`
+		Reason string `json:"reason,omitempty"`
+	} `json:"error,omitempty"`
+	Status int `json:"status,omitempty"`
 }
 
 // BulkResponse struct
 type BulkResponse struct {
-	Took   int  `json:"took"`
-	Errors bool `json:"errors"`
+	Took   int  `json:"took,omitempty"`
+	Errors bool `json:"errors,omitempty"`
 	Items  []struct {
 		Index struct {
-			Index   string `json:"_index"`
-			Type    string `json:"_type"`
-			ID      string `json:"_id"`
-			Version int    `json:"_version"`
-			Result  string `json:"result"`
-		} `json:"index"`
-		Created bool   `json:"created"`
-		Status  string `json:"status"`
-	} `json:"items"`
-	Status int `json:"status"`
+			Index   string `json:"_index,omitempty"`
+			Type    string `json:"_type,omitempty"`
+			ID      string `json:"_id,omitempty"`
+			Version int    `json:"_version,omitempty"`
+			Result  string `json:"result,omitempty"`
+		} `json:"index,omitempty"`
+		Created bool   `json:"created,omitempty"`
+		Status  string `json:"status,omitempty"`
+	} `json:"items,omitempty"`
+	Status int `json:"status,omitempty"`
 }
 
 // Launch struct
 type Launch struct {
-	LaunchID   string `json:"launchId"`
-	LaunchName string `json:"launchName"`
+	LaunchID   string `json:"launchId,omitempty"`
+	LaunchName string `json:"launchName,omitempty"`
 	TestItems  []struct {
-		TestItemID        string `json:"testItemId"`
-		IssueType         string `json:"issueType"`
-		OriginalIssueType string `json:"originalIssueType"`
+		TestItemID        string `json:"testItemId,omitempty"`
+		IssueType         string `json:"issueType,omitempty"`
+		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs              []struct {
-			LogID    string `json:"logId"`
-			LogLevel int    `json:"logLevel"`
-			Message  string `json:"message"`
-		} `json:"logs"`
-	} `json:"testItems"`
+			LogID    string `json:"logId,omitempty"`
+			LogLevel int    `json:"logLevel,omitempty"`
+			Message  string `json:"message,omitempty"`
+		} `json:"logs,omitempty"`
+	} `json:"testItems,omitempty"`
 }
 
 // Index struct
 type Index struct {
-	Health       string `json:"health"`
-	Status       string `json:"status"`
-	Index        string `json:"index"`
-	UUID         string `json:"uuid"`
-	Pri          string `json:"pri"`
-	Rep          string `json:"rep"`
-	DocsCount    string `json:"docs.count"`
-	DocsDeleted  string `json:"docs.deleted"`
-	StoreSize    string `json:"store.size"`
-	PriStoreSize string `json:"pri.store.size"`
+	Health       string `json:"health,omitempty"`
+	Status       string `json:"status,omitempty"`
+	Index        string `json:"index,omitempty"`
+	UUID         string `json:"uuid,omitempty"`
+	Pri          string `json:"pri,omitempty"`
+	Rep          string `json:"rep,omitempty"`
+	DocsCount    string `json:"docs.count,omitempty"`
+	DocsDeleted  string `json:"docs.deleted,omitempty"`
+	StoreSize    string `json:"store.size,omitempty"`
+	PriStoreSize string `json:"pri.store.size,omitempty"`
 }
 
 // SearchResult struct
 type SearchResult struct {
-	Took     int  `json:"took"`
-	TimedOut bool `json:"timed_out"`
+	Took     int  `json:"took,omitempty"`
+	TimedOut bool `json:"timed_out,omitempty"`
 	Hits     struct {
-		Total    int     `json:"total"`
-		MaxScore float64 `json:"max_score"`
+		Total    int     `json:"total,omitempty"`
+		MaxScore float64 `json:"max_score,omitempty"`
 		Hits     []struct {
-			Index  string  `json:"_index"`
-			Type   string  `json:"_type"`
-			ID     string  `json:"_id"`
-			Score  float64 `json:"_score"`
+			Index  string  `json:"_index,omitempty"`
+			Type   string  `json:"_type,omitempty"`
+			ID     string  `json:"_id,omitempty"`
+			Score  float64 `json:"_score,omitempty"`
 			Source struct {
-				TestItem   string `json:"test_item"`
-				IssueType  string `json:"issue_type"`
-				Message    string `json:"message"`
-				LogLevel   int    `json:"log_level"`
-				LaunchName string `json:"launch_name"`
-			} `json:"_source"`
-		} `json:"hits"`
-	} `json:"hits"`
+				TestItem   string `json:"test_item,omitempty"`
+				IssueType  string `json:"issue_type,omitempty"`
+				Message    string `json:"message,omitempty"`
+				LogLevel   int    `json:"log_level,omitempty"`
+				LaunchName string `json:"launch_name,omitempty"`
+			} `json:"_source,omitempty"`
+		} `json:"hits,omitempty"`
+	} `json:"hits,omitempty"`
 }
 
 type client struct {

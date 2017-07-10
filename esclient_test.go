@@ -33,294 +33,21 @@ import (
 )
 
 const (
-	TwoIndicesRs = `
-	[
-		{
-			"health": "yellow",
-			"status": "open",
-			"index": "idx0",
-			"uuid": "sGD-VQy5StS1jIUbuo3R7A",
-			"pri": "1",
-			"rep": "1",
-			"docs.count": "353400",
-			"docs.deleted": "0",
-			"store.size": "37.9mb",
-			"pri.store.size": "37.9mb"
-		},
-		{
-			"health": "yellow",
-			"status": "open",
-			"index": "idx1",
-			"uuid": "DoA20IojS72IdaFSN8CX9Q",
-			"pri": "1",
-			"rep": "1",
-			"docs.count": "38771",
-			"docs.deleted": "0",
-			"store.size": "11.2mb",
-			"pri.store.size": "11.2mb"
-		}
-	]`
-	IndexCreatedRs = `
-	{
-		"acknowledged" : true,
-		"shards_acknowledged" : true
-	}`
-	IndexAlreadyExistsRs = `
-	{
-		"error" : {
-			"root_cause" : [
-				{
-					"type" : "index_already_exists_exception",
-					"reason" : "index [idx1/DoA20IojS72IdaFSN8CX9Q] already exists",
-					"index_uuid" : "DoA20IojS72IdaFSN8CX9Q",
-					"index" : "idx1"
-				}
-			],
-			"type" : "index_already_exists_exception",
-			"reason" : "index [idx1/DoA20IojS72IdaFSN8CX9Q] already exists",
-			"index_uuid" : "DoA20IojS72IdaFSN8CX9Q",
-			"index" : "idx1"
-		},
-		"status" : 400
-	}`
-	IndexDeletedRs = `
-	{
-		"acknowledged" : true
-	}`
-	IndexNotFoundRs = `
-	{
-		"error" : {
-			"root_cause" : [
-			{
-				"type" : "index_not_found_exception",
-				"reason" : "no such index",
-				"resource.type" : "index_or_alias",
-				"resource.id" : "idx1",
-				"index_uuid" : "_na_",
-				"index" : "idx1"
-			}
-			],
-			"type" : "index_not_found_exception",
-			"reason" : "no such index",
-			"resource.type" : "index_or_alias",
-			"resource.id" : "idx1",
-			"index_uuid" : "_na_",
-			"index" : "idx1"
-		},
-		"status" : 404
-	}`
-	LaunchWoTestItems = `
-	{
-		"launchId": "1234567890",
-		"launchName": "Launch without test items",
-		"testItems": []
-	}`
-	LaunchWTestItemsWoLogs = `
-	{
-		"launchId": "1234567891",
-		"launchName": "Launch with test items without logs",
-		"testItems": [
-			{
-				"testItemId": "0001",
-				"issueType": "TI001",
-				"logs": []
-			}
-		]
-	}`
-	LaunchWTestItemsWLogs = `
-	{
-		"launchId": "1234567892",
-		"launchName": "Launch with test items with logs",
-		"testItems": [
-			{
-				"testItemId": "0002",
-				"issueType": "TI001",
-				"logs": [
-					{
-						"logId": "0001",
-						"logLevel": 40000,
-						"message": "Message 1"
-					},
-					{
-						"logId": "0002",
-						"logLevel": 40000,
-						"message": "Message 2"
-					}
-				]
-			}
-		]
-	}`
-	IndexLogsRq = `{"index":{"_id":"0001","_index":"idx2","_type":"log"}}
-{"issue_type":"TI001","launch_name":"Launch with test items with logs","log_level":40000,"message":"Message ","test_item":"0002"}
-{"index":{"_id":"0002","_index":"idx2","_type":"log"}}
-{"issue_type":"TI001","launch_name":"Launch with test items with logs","log_level":40000,"message":"Message ","test_item":"0002"}
-`
-	IndexLogsRs = `
-	{
-		"took" : 63,
-		"errors" : false,
-		"items" : [
-			{
-				"index" : {
-					"_index" : "idx2",
-					"_type" : "log",
-					"_id" : "0001",
-					"_version" : 1,
-					"result" : "created",
-					"_shards" : {
-						"total" : 2,
-						"successful" : 1,
-						"failed" : 0
-					},
-					"created" : true,
-					"status" : 201
-				}
-			}
-		]
-	}`
-	SearchRq = `{"query":{"bool":{"must":[{"term":{"log_level":40000}},{"exists":{"field":"issue_type"}},{"more_like_this":{"fields":["message"],"like":"Message ","minimum_should_match":"90%"}}],"must_not":{"wildcard":{"issue_type":"TI*"}},"should":{"term":{"launch_name":{"boost":2,"value":"Launch with test items with logs"}}}}},"size":10}
-`
-	NoHitSearchRs = `
-	{
-		"took" : 13,
-		"timed_out" : false,
-		"_shards" : {
-			"total" : 1,
-			"successful" : 1,
-			"failed" : 0
-		},
-		"hits" : {
-			"total" : 0,
-			"max_score" : null,
-			"hits" : []
-		}
-	}`
-	OneHitSearchRs = `
-	{
-		"took" : 13,
-		"timed_out" : false,
-		"_shards" : {
-			"total" : 1,
-			"successful" : 1,
-			"failed" : 0
-		},
-		"hits" : {
-			"total" : 1,
-			"max_score" : 10,
-			"hits" : [
-				{
-					"_index" : "idx2",
-					"_type" : "log",
-					"_id" : "0001",
-					"_score" : 10,
-					"_source" : {
-						"issue_type" : "AB001",
-						"launch_name" : "Launch 1",
-						"log_level" : 40000,
-						"message" : "Message AB",
-						"test_item" : "0001"
-					}
-				}
-			]
-		}
-	}`
-	TwoHitsSearchRs = `
-	{
-		"took" : 13,
-		"timed_out" : false,
-		"_shards" : {
-			"total" : 1,
-			"successful" : 1,
-			"failed" : 0
-		},
-		"hits" : {
-			"total" : 2,
-			"max_score" : 15,
-			"hits" : [
-				{
-					"_index" : "idx3",
-					"_type" : "log",
-					"_id" : "0001",
-					"_score" : 15,
-					"_source" : {
-						"issue_type" : "AB001",
-						"launch_name" : "Launch 1",
-						"log_level" : 40000,
-						"message" : "Message AB",
-						"test_item" : "0001"
-					}
-				},
-				{
-					"_index" : "idx3",
-					"_type" : "log",
-					"_id" : "0002",
-					"_score" : 10,
-					"_source" : {
-						"issue_type" : "PB001",
-						"launch_name" : "Launch 1",
-						"log_level" : 40000,
-						"message" : "Message PB",
-						"test_item" : "0001"
-					}
-				}
-			]
-		}
-	}`
-	ThreeHitsSearchRs = `
-	{
-		"took" : 13,
-		"timed_out" : false,
-		"_shards" : {
-			"total" : 1,
-			"successful" : 1,
-			"failed" : 0
-		},
-		"hits" : {
-			"total" : 2,
-			"max_score" : 20,
-			"hits" : [
-				{
-					"_index" : "idx4",
-					"_type" : "log",
-					"_id" : "0001",
-					"_score" : 15,
-					"_source" : {
-						"issue_type" : "AB001",
-						"launch_name" : "Launch 1",
-						"log_level" : 40000,
-						"message" : "Message AB",
-						"test_item" : "0001"
-					}
-				},
-				{
-					"_index" : "idx4",
-					"_type" : "log",
-					"_id" : "0002",
-					"_score" : 10,
-					"_source" : {
-						"issue_type" : "PB001",
-						"launch_name" : "Launch 1",
-						"log_level" : 40000,
-						"message" : "Message PB",
-						"test_item" : "0001"
-					}
-				},
-				{
-					"_index" : "idx4",
-					"_type" : "log",
-					"_id" : "0003",
-					"_score" : 10,
-					"_source" : {
-						"issue_type" : "PB001",
-						"launch_name" : "Launch 1",
-						"log_level" : 40000,
-						"message" : "Message PB",
-						"test_item" : "0001"
-					}
-				}
-			]
-		}
-	}`
+	TwoIndicesRs           = "two_indices_rs.json"
+	IndexCreatedRs         = "index_created_rs.json"
+	IndexAlreadyExistsRs   = "index_already_exists_rs.json"
+	IndexDeletedRs         = "index_deleted_rs.json"
+	IndexNotFoundRs        = "index_not_found_rs.json"
+	LaunchWoTestItems      = "launch_wo_test_items.json"
+	LaunchWTestItemsWoLogs = "launch_w_test_items_wo_logs.json"
+	LaunchWTestItemsWLogs  = "launch_w_test_items_w_logs.json"
+	IndexLogsRq            = "index_logs_rq.json"
+	IndexLogsRs            = "index_logs_rs.json"
+	SearchRq               = "search_rq.json"
+	NoHitsSearchRs         = "no_hits_search_rs.json"
+	OneHitSearchRs         = "one_hit_search_rs.json"
+	TwoHitsSearchRs        = "two_hits_search_rs.json"
+	ThreeHitsSearchRs      = "three_hits_search_rs.json"
 )
 
 func TestListIndices(t *testing.T) {
@@ -340,7 +67,7 @@ func TestListIndices(t *testing.T) {
 		{
 			params: map[string]interface{}{
 				"statusCode": http.StatusOK,
-				"response":   TwoIndicesRs,
+				"response":   getFixture(TwoIndicesRs),
 			},
 			expectedCount: 2,
 			expectErr:     false,
@@ -382,7 +109,7 @@ func TestCreateIndex(t *testing.T) {
 			params: map[string]interface{}{
 				"indexName":  "idx0",
 				"statusCode": http.StatusOK,
-				"response":   IndexCreatedRs,
+				"response":   getFixture(IndexCreatedRs),
 			},
 			expectErr: false,
 		},
@@ -390,7 +117,7 @@ func TestCreateIndex(t *testing.T) {
 			params: map[string]interface{}{
 				"indexName":  "idx1",
 				"statusCode": http.StatusBadRequest,
-				"response":   IndexAlreadyExistsRs,
+				"response":   getFixture(IndexAlreadyExistsRs),
 			},
 			expectErr: true,
 		},
@@ -454,7 +181,7 @@ func TestDeleteIndex(t *testing.T) {
 			params: map[string]interface{}{
 				"indexName":  "idx0",
 				"statusCode": http.StatusOK,
-				"response":   IndexDeletedRs,
+				"response":   getFixture(IndexDeletedRs),
 			},
 			expectedStatus: 0,
 		},
@@ -462,7 +189,7 @@ func TestDeleteIndex(t *testing.T) {
 			params: map[string]interface{}{
 				"indexName":  "idx1",
 				"statusCode": http.StatusNotFound,
-				"response":   IndexNotFoundRs,
+				"response":   getFixture(IndexNotFoundRs),
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -490,24 +217,24 @@ func TestIndexLogs(t *testing.T) {
 			params: map[string]interface{}{
 				"indexName": "idx0",
 			},
-			indexRequest:     LaunchWoTestItems,
+			indexRequest:     getFixture(LaunchWoTestItems),
 			expectServerCall: false,
 		},
 		{
 			params: map[string]interface{}{
 				"indexName": "idx1",
 			},
-			indexRequest:     LaunchWTestItemsWoLogs,
+			indexRequest:     getFixture(LaunchWTestItemsWoLogs),
 			expectServerCall: false,
 		},
 		{
 			params: map[string]interface{}{
 				"indexName":  "idx2",
-				"request":    IndexLogsRq,
-				"response":   IndexLogsRs,
+				"request":    getFixture(IndexLogsRq),
+				"response":   getFixture(IndexLogsRs),
 				"statusCode": http.StatusOK,
 			},
-			indexRequest:     LaunchWTestItemsWLogs,
+			indexRequest:     getFixture(LaunchWTestItemsWLogs),
 			expectServerCall: true,
 		},
 	}
@@ -542,55 +269,55 @@ func TestAnalyzeLogs(t *testing.T) {
 			params: map[string]interface{}{
 				"indexName": "idx0",
 			},
-			analyzeRequest: LaunchWoTestItems,
+			analyzeRequest: getFixture(LaunchWoTestItems),
 		},
 		{
 			params: map[string]interface{}{
 				"indexName": "idx1",
 			},
-			analyzeRequest: LaunchWTestItemsWoLogs,
+			analyzeRequest: getFixture(LaunchWTestItemsWoLogs),
 		},
 		{
 			params: map[string]interface{}{
 				"indexName":  "idx2",
-				"request":    SearchRq,
-				"response":   NoHitSearchRs,
+				"request":    getFixture(SearchRq),
+				"response":   getFixture(NoHitsSearchRs),
 				"statusCode": http.StatusOK,
 			},
-			analyzeRequest:    LaunchWTestItemsWLogs,
+			analyzeRequest:    getFixture(LaunchWTestItemsWLogs),
 			expectedIssueType: "",
 			serverCallCount:   2,
 		},
 		{
 			params: map[string]interface{}{
 				"indexName":  "idx2",
-				"request":    SearchRq,
-				"response":   OneHitSearchRs,
+				"request":    getFixture(SearchRq),
+				"response":   getFixture(OneHitSearchRs),
 				"statusCode": http.StatusOK,
 			},
-			analyzeRequest:    LaunchWTestItemsWLogs,
+			analyzeRequest:    getFixture(LaunchWTestItemsWLogs),
 			expectedIssueType: "AB001",
 			serverCallCount:   2,
 		},
 		{
 			params: map[string]interface{}{
 				"indexName":  "idx3",
-				"request":    SearchRq,
-				"response":   TwoHitsSearchRs,
+				"request":    getFixture(SearchRq),
+				"response":   getFixture(TwoHitsSearchRs),
 				"statusCode": http.StatusOK,
 			},
-			analyzeRequest:    LaunchWTestItemsWLogs,
+			analyzeRequest:    getFixture(LaunchWTestItemsWLogs),
 			expectedIssueType: "AB001",
 			serverCallCount:   2,
 		},
 		{
 			params: map[string]interface{}{
 				"indexName":  "idx4",
-				"request":    SearchRq,
-				"response":   ThreeHitsSearchRs,
+				"request":    getFixture(SearchRq),
+				"response":   getFixture(ThreeHitsSearchRs),
 				"statusCode": http.StatusOK,
 			},
-			analyzeRequest:    LaunchWTestItemsWLogs,
+			analyzeRequest:    getFixture(LaunchWTestItemsWLogs),
 			expectedIssueType: "PB001",
 			serverCallCount:   2,
 		},
@@ -617,6 +344,11 @@ func TestAnalyzeLogs(t *testing.T) {
 			assert.Equal(t, test.expectedIssueType, launch.TestItems[0].IssueType)
 		}
 	}
+}
+
+func getFixture(filename string) string {
+	f, _ := ioutil.ReadFile("fixtures/" + filename)
+	return string(f)
 }
 
 func startServer(t *testing.T, expectedMethod string, expectedURI string, params map[string]interface{}) *httptest.Server {

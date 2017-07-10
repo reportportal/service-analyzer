@@ -1,0 +1,4 @@
+{"index":{"_id":"0001","_index":"idx2","_type":"log"}}
+{"issue_type":"TI001","launch_name":"Launch with test items with logs","log_level":40000,"message":"Message ","test_item":"0002"}
+{"index":{"_id":"0002","_index":"idx2","_type":"log"}}
+{"issue_type":"TI001","launch_name":"Launch with test items with logs","log_level":40000,"message":"Message ","test_item":"0002"}

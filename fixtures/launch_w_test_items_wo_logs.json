@@ -1,0 +1,11 @@
+{
+    "launchId": "1234567891",
+    "launchName": "Launch with test items without logs",
+    "testItems": [
+        {
+            "testItemId": "0001",
+            "issueType": "TI001",
+            "logs": []
+        }
+    ]
+}

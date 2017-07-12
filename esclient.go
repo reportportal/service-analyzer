@@ -34,13 +34,15 @@ import (
 
 // ESClient interface
 type ESClient interface {
-	ListIndices() (*[]Index, error)
+	ListIndices() ([]Index, error)
 	CreateIndex(name string) (*Response, error)
 	IndexExists(name string) (bool, error)
 	DeleteIndex(name string) (*Response, error)
-	IndexLogs(name string, launch *Launch) (*BulkResponse, error)
-	AnalyzeLogs(name string, launch *Launch) (*Launch, error)
 
+	IndexLogs(launches []Launch) (*BulkResponse, error)
+	AnalyzeLogs(launches []Launch) ([]Launch, error)
+
+	createIndexIfNotExists(indexName string) error
 	buildURL(pathElements ...string) string
 	sanitizeText(text string) string
 }
@@ -80,6 +82,7 @@ type BulkResponse struct {
 // Launch struct
 type Launch struct {
 	LaunchID   string `json:"launchId,required"`
+	Project    string `json:"project,required"`
 	LaunchName string `json:"launchName,omitempty"`
 	TestItems  []struct {
 		TestItemID        string `json:"testItemId,required"`
@@ -131,16 +134,14 @@ type SearchResult struct {
 }
 
 type client struct {
-	hosts    []string
-	indicies []Index
-	re       *regexp.Regexp
+	hosts []string
+	re    *regexp.Regexp
 }
 
 // NewClient creates new ESClient
 func NewClient(hosts string) ESClient {
 	c := &client{}
 	c.hosts = strings.Split(hosts, ",")
-	c.indicies = []Index{}
 	c.re = regexp.MustCompile("\\d+")
 	return c
 }
@@ -153,17 +154,15 @@ func (rs *Response) String() string {
 	return fmt.Sprintf("%v", string(s))
 }
 
-func (c *client) ListIndices() (*[]Index, error) {
+func (c *client) ListIndices() ([]Index, error) {
 	url := c.buildURL("_cat", "indices?format=json")
 
-	indices := &[]Index{}
+	indices := []Index{}
 
-	err := sendOpRequest("GET", url, indices)
+	err := sendOpRequest("GET", url, &indices)
 	if err != nil {
 		return nil, err
 	}
-
-	c.indicies = *indices
 
 	return indices, nil
 }
@@ -200,6 +199,7 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 	url := c.buildURL(name)
 
 	rs := &Response{}
+
 	return rs, sendOpRequest("PUT", url, rs, body)
 }
 
@@ -221,35 +221,38 @@ func (c *client) DeleteIndex(name string) (*Response, error) {
 	return rs, sendOpRequest("DELETE", url, rs)
 }
 
-func (c *client) IndexLogs(name string, launch *Launch) (*BulkResponse, error) {
+func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 	indexType := "log"
 
 	var bodies []interface{}
 
-	for _, ti := range launch.TestItems {
-		for _, l := range ti.Logs {
+	for _, lc := range launches {
+		c.createIndexIfNotExists(lc.Project)
+		for _, ti := range lc.TestItems {
+			for _, l := range ti.Logs {
 
-			op := map[string]interface{}{
-				"index": map[string]interface{}{
-					"_index": name,
-					"_type":  indexType,
-					"_id":    l.LogID,
-				},
+				op := map[string]interface{}{
+					"index": map[string]interface{}{
+						"_index": lc.Project,
+						"_type":  indexType,
+						"_id":    l.LogID,
+					},
+				}
+
+				bodies = append(bodies, op)
+
+				message := c.sanitizeText(l.Message)
+
+				body := map[string]interface{}{
+					"launch_name": lc.LaunchName,
+					"test_item":   ti.TestItemID,
+					"issue_type":  ti.IssueType,
+					"log_level":   l.LogLevel,
+					"message":     message,
+				}
+
+				bodies = append(bodies, body)
 			}
-
-			bodies = append(bodies, op)
-
-			message := c.sanitizeText(l.Message)
-
-			body := map[string]interface{}{
-				"launch_name": launch.LaunchName,
-				"test_item":   ti.TestItemID,
-				"issue_type":  ti.IssueType,
-				"log_level":   l.LogLevel,
-				"message":     message,
-			}
-
-			bodies = append(bodies, body)
 		}
 	}
 
@@ -264,43 +267,55 @@ func (c *client) IndexLogs(name string, launch *Launch) (*BulkResponse, error) {
 	return rs, sendOpRequest("PUT", url, rs, bodies...)
 }
 
-func (c *client) AnalyzeLogs(name string, launch *Launch) (*Launch, error) {
-	url := c.buildURL(name, "log", "_search")
+func (c *client) AnalyzeLogs(launches []Launch) ([]Launch, error) {
+	for _, lc := range launches {
+		url := c.buildURL(lc.Project, "log", "_search")
 
-	for i, ti := range launch.TestItems {
+		for j, ti := range lc.TestItems {
+			issueTypes := make(map[string]float64)
 
-		issueTypes := make(map[string]float64)
+			for _, l := range ti.Logs {
+				message := c.sanitizeText(l.Message)
 
-		for _, l := range ti.Logs {
-			message := c.sanitizeText(l.Message)
+				query := buildQuery(lc.LaunchName, message)
 
-			query := buildQuery(launch.LaunchName, message)
+				rs := &SearchResult{}
+				err := sendOpRequest("GET", url, rs, query)
+				if err != nil {
+					return nil, err
+				}
 
-			rs := &SearchResult{}
-			err := sendOpRequest("GET", url, rs, query)
-			if err != nil {
-				return nil, err
+				calculateScores(rs, 10, issueTypes)
 			}
 
-			calculateScores(rs, 10, issueTypes)
-		}
+			var predictedIssueType string
 
-		var predictedIssueType string
-
-		if len(issueTypes) > 0 {
-			max := 0.0
-			for k, v := range issueTypes {
-				if v > max {
-					max = v
-					predictedIssueType = k
+			if len(issueTypes) > 0 {
+				max := 0.0
+				for k, v := range issueTypes {
+					if v > max {
+						max = v
+						predictedIssueType = k
+					}
 				}
 			}
-		}
 
-		launch.TestItems[i].IssueType = predictedIssueType
+			lc.TestItems[j].IssueType = predictedIssueType
+		}
 	}
 
-	return launch, nil
+	return launches, nil
+}
+
+func (c *client) createIndexIfNotExists(indexName string) error {
+	exists, err := c.IndexExists(indexName)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		_, err = c.CreateIndex(indexName)
+	}
+	return err
 }
 
 func (c *client) sanitizeText(text string) string {

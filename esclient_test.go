@@ -21,13 +21,12 @@ along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"encoding/json"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -50,50 +49,72 @@ const (
 	ThreeHitsSearchRs      = "three_hits_search_rs.json"
 )
 
+type ServerCall struct {
+	method string
+	uri    string
+	rs     string
+	rq     string
+	status int
+}
+
 func TestListIndices(t *testing.T) {
 	tests := []struct {
-		params        map[string]interface{}
+		calls         []ServerCall
 		expectedCount int
 		expectErr     bool
 	}{
 		{
-			params: map[string]interface{}{
-				"statusCode": http.StatusOK,
-				"response":   "[]",
+			calls: []ServerCall{
+				ServerCall{
+					method: "GET",
+					uri:    "/_cat/indices?format=json",
+					rs:     "[]",
+					status: http.StatusOK,
+				},
 			},
 			expectedCount: 0,
 			expectErr:     false,
 		},
 		{
-			params: map[string]interface{}{
-				"statusCode": http.StatusOK,
-				"response":   getFixture(TwoIndicesRs),
+			calls: []ServerCall{
+				ServerCall{
+					method: "GET",
+					uri:    "/_cat/indices?format=json",
+					rs:     getFixture(TwoIndicesRs),
+					status: http.StatusOK,
+				},
 			},
 			expectedCount: 2,
 			expectErr:     false,
 		},
 		{
-			params: map[string]interface{}{
-				"statusCode": http.StatusInternalServerError,
+			calls: []ServerCall{
+				ServerCall{
+					method: "GET",
+					uri:    "/_cat/indices?format=json",
+					status: http.StatusInternalServerError,
+				},
 			},
-			expectedCount: 0,
-			expectErr:     true,
+			expectErr: true,
 		},
 	}
 
 	for _, test := range tests {
-		ts := startServer(t, "GET", "/_cat/indices?format=json", test.params)
+		i := 0
+		ts := startServer(t, test.calls, &i)
 		defer ts.Close()
 		c := NewClient(ts.URL)
 
 		indices, err := c.ListIndices()
+
+		assert.Equal(t, len(test.calls), i)
+
 		if test.expectErr {
 			assert.Error(t, err)
 		} else {
 			assert.NoError(t, err)
-			idxs := *indices
-			assert.Equal(t, test.expectedCount, len(idxs))
-			for j, idx := range idxs {
+			assert.Equal(t, test.expectedCount, len(indices))
+			for j, idx := range indices {
 				assert.Equal(t, fmt.Sprintf("idx%d", j), idx.Index)
 			}
 		}
@@ -102,34 +123,46 @@ func TestListIndices(t *testing.T) {
 
 func TestCreateIndex(t *testing.T) {
 	tests := []struct {
-		params    map[string]interface{}
+		calls     []ServerCall
+		index     string
 		expectErr bool
 	}{
 		{
-			params: map[string]interface{}{
-				"indexName":  "idx0",
-				"statusCode": http.StatusOK,
-				"response":   getFixture(IndexCreatedRs),
+			calls: []ServerCall{
+				ServerCall{
+					method: "PUT",
+					uri:    "/idx0",
+					rs:     getFixture(IndexCreatedRs),
+					status: http.StatusOK,
+				},
 			},
+			index:     "idx0",
 			expectErr: false,
 		},
 		{
-			params: map[string]interface{}{
-				"indexName":  "idx1",
-				"statusCode": http.StatusBadRequest,
-				"response":   getFixture(IndexAlreadyExistsRs),
+			calls: []ServerCall{
+				ServerCall{
+					method: "PUT",
+					uri:    "/idx1",
+					rs:     getFixture(IndexAlreadyExistsRs),
+					status: http.StatusBadRequest,
+				},
 			},
+			index:     "idx1",
 			expectErr: true,
 		},
 	}
 
 	for _, test := range tests {
-		indexName := test.params["indexName"].(string)
-		ts := startServer(t, "PUT", "/"+indexName, test.params)
+		i := 0
+		ts := startServer(t, test.calls, &i)
 		defer ts.Close()
 		c := NewClient(ts.URL)
 
-		rs, err := c.CreateIndex(indexName)
+		rs, err := c.CreateIndex(test.index)
+
+		assert.Equal(t, len(test.calls), i)
+
 		if test.expectErr {
 			assert.Error(t, err)
 		} else {
@@ -141,32 +174,44 @@ func TestCreateIndex(t *testing.T) {
 
 func TestIndexExists(t *testing.T) {
 	tests := []struct {
-		params map[string]interface{}
+		calls  []ServerCall
+		index  string
 		exists bool
 	}{
 		{
-			params: map[string]interface{}{
-				"indexName":  "idx0",
-				"statusCode": http.StatusOK,
+			calls: []ServerCall{
+				ServerCall{
+					method: "HEAD",
+					uri:    "/idx0",
+					status: http.StatusOK,
+				},
 			},
+			index:  "idx0",
 			exists: true,
 		},
 		{
-			params: map[string]interface{}{
-				"indexName":  "idx1",
-				"statusCode": http.StatusNotFound,
+			calls: []ServerCall{
+				ServerCall{
+					method: "HEAD",
+					uri:    "/idx1",
+					status: http.StatusNotFound,
+				},
 			},
+			index:  "idx1",
 			exists: false,
 		},
 	}
 
 	for _, test := range tests {
-		indexName := test.params["indexName"].(string)
-		ts := startServer(t, "HEAD", "/"+indexName, test.params)
+		i := 0
+		ts := startServer(t, test.calls, &i)
 		defer ts.Close()
 		c := NewClient(ts.URL)
 
-		exists, err := c.IndexExists(indexName)
+		exists, err := c.IndexExists(test.index)
+
+		assert.Equal(t, len(test.calls), i)
+
 		assert.NoError(t, err)
 		assert.Equal(t, test.exists, exists)
 	}
@@ -174,34 +219,46 @@ func TestIndexExists(t *testing.T) {
 
 func TestDeleteIndex(t *testing.T) {
 	tests := []struct {
-		params         map[string]interface{}
+		calls          []ServerCall
+		index          string
 		expectedStatus int
 	}{
 		{
-			params: map[string]interface{}{
-				"indexName":  "idx0",
-				"statusCode": http.StatusOK,
-				"response":   getFixture(IndexDeletedRs),
+			calls: []ServerCall{
+				ServerCall{
+					method: "DELETE",
+					uri:    "/idx0",
+					rs:     getFixture(IndexDeletedRs),
+					status: http.StatusOK,
+				},
 			},
+			index:          "idx0",
 			expectedStatus: 0,
 		},
 		{
-			params: map[string]interface{}{
-				"indexName":  "idx1",
-				"statusCode": http.StatusNotFound,
-				"response":   getFixture(IndexNotFoundRs),
+			calls: []ServerCall{
+				ServerCall{
+					method: "DELETE",
+					uri:    "/idx1",
+					rs:     getFixture(IndexNotFoundRs),
+					status: http.StatusNotFound,
+				},
 			},
+			index:          "idx1",
 			expectedStatus: http.StatusNotFound,
 		},
 	}
 
 	for _, test := range tests {
-		indexName := test.params["indexName"].(string)
-		ts := startServer(t, "DELETE", "/"+indexName, test.params)
+		i := 0
+		ts := startServer(t, test.calls, &i)
 		defer ts.Close()
 		c := NewClient(ts.URL)
 
-		rs, err := c.DeleteIndex(indexName)
+		rs, err := c.DeleteIndex(test.index)
+
+		assert.Equal(t, len(test.calls), i)
+
 		assert.NoError(t, err)
 		assert.Equal(t, test.expectedStatus, rs.Status)
 	}
@@ -209,139 +266,201 @@ func TestDeleteIndex(t *testing.T) {
 
 func TestIndexLogs(t *testing.T) {
 	tests := []struct {
-		params           map[string]interface{}
-		indexRequest     string
-		expectServerCall bool
+		calls   []ServerCall
+		indexRq string
 	}{
 		{
-			params: map[string]interface{}{
-				"indexName": "idx0",
+			calls: []ServerCall{
+				ServerCall{
+					method: "HEAD",
+					uri:    "/idx0",
+					status: http.StatusOK,
+				},
 			},
-			indexRequest:     getFixture(LaunchWoTestItems),
-			expectServerCall: false,
+			indexRq: getFixture(LaunchWoTestItems),
 		},
 		{
-			params: map[string]interface{}{
-				"indexName": "idx1",
+			calls: []ServerCall{
+				ServerCall{
+					method: "HEAD",
+					uri:    "/idx1",
+					status: http.StatusOK,
+				},
 			},
-			indexRequest:     getFixture(LaunchWTestItemsWoLogs),
-			expectServerCall: false,
+			indexRq: getFixture(LaunchWTestItemsWoLogs),
 		},
 		{
-			params: map[string]interface{}{
-				"indexName":  "idx2",
-				"request":    getFixture(IndexLogsRq),
-				"response":   getFixture(IndexLogsRs),
-				"statusCode": http.StatusOK,
+			calls: []ServerCall{
+				ServerCall{
+					method: "HEAD",
+					uri:    "/idx2",
+					status: http.StatusNotFound,
+				},
+				ServerCall{
+					method: "PUT",
+					uri:    "/idx2",
+					rs:     getFixture(IndexCreatedRs),
+					status: http.StatusOK,
+				},
+				ServerCall{
+					method: "PUT",
+					uri:    "/_bulk",
+					rq:     getFixture(IndexLogsRq),
+					rs:     getFixture(IndexLogsRs),
+					status: http.StatusOK,
+				},
 			},
-			indexRequest:     getFixture(LaunchWTestItemsWLogs),
-			expectServerCall: true,
+			indexRq: getFixture(LaunchWTestItemsWLogs),
 		},
 	}
 
 	for _, test := range tests {
-		var esURL string
-		indexName := test.params["indexName"].(string)
-		if test.expectServerCall {
-			ts := startServer(t, "PUT", "/_bulk", test.params)
-			defer ts.Close()
-			esURL = ts.URL
-		}
-		c := NewClient(esURL)
+		i := 0
+		ts := startServer(t, test.calls, &i)
+		defer ts.Close()
+		c := NewClient(ts.URL)
 
-		launch := &Launch{}
-		err := json.Unmarshal([]byte(test.indexRequest), launch)
+		launches := []Launch{}
+		err := json.Unmarshal([]byte(test.indexRq), &launches)
 		assert.NoError(t, err)
 
-		_, err = c.IndexLogs(indexName, launch)
+		_, err = c.IndexLogs(launches)
+
+		assert.Equal(t, len(test.calls), i)
 		assert.NoError(t, err)
 	}
 }
 
 func TestAnalyzeLogs(t *testing.T) {
 	tests := []struct {
-		params            map[string]interface{}
-		analyzeRequest    string
-		expectedIssueType string
-		serverCallCount   int
+		calls         []ServerCall
+		analyzeRq     string
+		expectedIssue string
 	}{
 		{
-			params: map[string]interface{}{
-				"indexName": "idx0",
-			},
-			analyzeRequest: getFixture(LaunchWoTestItems),
+			calls:     []ServerCall{},
+			analyzeRq: getFixture(LaunchWoTestItems),
 		},
 		{
-			params: map[string]interface{}{
-				"indexName": "idx1",
-			},
-			analyzeRequest: getFixture(LaunchWTestItemsWoLogs),
+			calls:     []ServerCall{},
+			analyzeRq: getFixture(LaunchWTestItemsWoLogs),
 		},
 		{
-			params: map[string]interface{}{
-				"indexName":  "idx2",
-				"request":    getFixture(SearchRq),
-				"response":   getFixture(NoHitsSearchRs),
-				"statusCode": http.StatusOK,
+			calls: []ServerCall{
+				ServerCall{
+					method: "GET",
+					uri:    "/idx2/log/_search",
+					rq:     getFixture(SearchRq),
+					rs:     getFixture(NoHitsSearchRs),
+					status: http.StatusOK,
+				},
+				ServerCall{
+					method: "GET",
+					uri:    "/idx2/log/_search",
+					rq:     getFixture(SearchRq),
+					rs:     getFixture(NoHitsSearchRs),
+					status: http.StatusOK,
+				},
 			},
-			analyzeRequest:    getFixture(LaunchWTestItemsWLogs),
-			expectedIssueType: "",
-			serverCallCount:   2,
+			analyzeRq: getFixture(LaunchWTestItemsWLogs),
 		},
 		{
-			params: map[string]interface{}{
-				"indexName":  "idx2",
-				"request":    getFixture(SearchRq),
-				"response":   getFixture(OneHitSearchRs),
-				"statusCode": http.StatusOK,
+			calls: []ServerCall{
+				ServerCall{
+					method: "GET",
+					uri:    "/idx2/log/_search",
+					rq:     getFixture(SearchRq),
+					rs:     getFixture(NoHitsSearchRs),
+					status: http.StatusOK,
+				},
+				ServerCall{
+					method: "GET",
+					uri:    "/idx2/log/_search",
+					rq:     getFixture(SearchRq),
+					rs:     getFixture(OneHitSearchRs),
+					status: http.StatusOK,
+				},
 			},
-			analyzeRequest:    getFixture(LaunchWTestItemsWLogs),
-			expectedIssueType: "AB001",
-			serverCallCount:   2,
+			analyzeRq:     getFixture(LaunchWTestItemsWLogs),
+			expectedIssue: "AB001",
 		},
 		{
-			params: map[string]interface{}{
-				"indexName":  "idx3",
-				"request":    getFixture(SearchRq),
-				"response":   getFixture(TwoHitsSearchRs),
-				"statusCode": http.StatusOK,
+			calls: []ServerCall{
+				ServerCall{
+					method: "GET",
+					uri:    "/idx2/log/_search",
+					rq:     getFixture(SearchRq),
+					rs:     getFixture(OneHitSearchRs),
+					status: http.StatusOK,
+				},
+				ServerCall{
+					method: "GET",
+					uri:    "/idx2/log/_search",
+					rq:     getFixture(SearchRq),
+					rs:     getFixture(TwoHitsSearchRs),
+					status: http.StatusOK,
+				},
 			},
-			analyzeRequest:    getFixture(LaunchWTestItemsWLogs),
-			expectedIssueType: "AB001",
-			serverCallCount:   2,
+			analyzeRq:     getFixture(LaunchWTestItemsWLogs),
+			expectedIssue: "AB001",
 		},
 		{
-			params: map[string]interface{}{
-				"indexName":  "idx4",
-				"request":    getFixture(SearchRq),
-				"response":   getFixture(ThreeHitsSearchRs),
-				"statusCode": http.StatusOK,
+			calls: []ServerCall{
+				ServerCall{
+					method: "GET",
+					uri:    "/idx2/log/_search",
+					rq:     getFixture(SearchRq),
+					rs:     getFixture(TwoHitsSearchRs),
+					status: http.StatusOK,
+				},
+				ServerCall{
+					method: "GET",
+					uri:    "/idx2/log/_search",
+					rq:     getFixture(SearchRq),
+					rs:     getFixture(ThreeHitsSearchRs),
+					status: http.StatusOK,
+				},
 			},
-			analyzeRequest:    getFixture(LaunchWTestItemsWLogs),
-			expectedIssueType: "PB001",
-			serverCallCount:   2,
+			analyzeRq:     getFixture(LaunchWTestItemsWLogs),
+			expectedIssue: "AB001",
+		},
+		{
+			calls: []ServerCall{
+				ServerCall{
+					method: "GET",
+					uri:    "/idx2/log/_search",
+					rq:     getFixture(SearchRq),
+					rs:     getFixture(NoHitsSearchRs),
+					status: http.StatusOK,
+				},
+				ServerCall{
+					method: "GET",
+					uri:    "/idx2/log/_search",
+					rq:     getFixture(SearchRq),
+					rs:     getFixture(ThreeHitsSearchRs),
+					status: http.StatusOK,
+				},
+			},
+			analyzeRq:     getFixture(LaunchWTestItemsWLogs),
+			expectedIssue: "PB001",
 		},
 	}
 
 	for _, test := range tests {
-		var esURL string
-		indexName := test.params["indexName"].(string)
-		if test.serverCallCount > 0 {
-			ts := startServer(t, "GET", "/"+indexName+"/log/_search", test.params)
-			defer ts.Close()
-			esURL = ts.URL
-		}
-		c := NewClient(esURL)
+		i := 0
+		ts := startServer(t, test.calls, &i)
+		defer ts.Close()
+		c := NewClient(ts.URL)
 
-		launch := &Launch{}
-		err := json.Unmarshal([]byte(test.analyzeRequest), launch)
+		launches := []Launch{}
+		err := json.Unmarshal([]byte(test.analyzeRq), &launches)
 		assert.NoError(t, err)
 
-		launch, err = c.AnalyzeLogs(indexName, launch)
+		launches, err = c.AnalyzeLogs(launches)
 		assert.NoError(t, err)
 
-		if test.expectedIssueType != "" {
-			assert.Equal(t, test.expectedIssueType, launch.TestItems[0].IssueType)
+		if test.expectedIssue != "" {
+			assert.Equal(t, test.expectedIssue, launches[0].TestItems[0].IssueType)
 		}
 	}
 }
@@ -351,22 +470,22 @@ func getFixture(filename string) string {
 	return string(f)
 }
 
-func startServer(t *testing.T, expectedMethod string, expectedURI string, params map[string]interface{}) *httptest.Server {
+func startServer(t *testing.T, expectedCalls []ServerCall, i *int) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, expectedMethod, r.Method)
-		assert.Equal(t, expectedURI, r.URL.RequestURI())
-		expectedRq, ok := params["request"]
-		if ok {
+		expectedCall := expectedCalls[*i]
+		assert.Equal(t, expectedCall.method, r.Method)
+		assert.Equal(t, expectedCall.uri, r.URL.RequestURI())
+		if expectedCall.rq != "" {
 			defer r.Body.Close()
 			rq, err := ioutil.ReadAll(r.Body)
 			assert.NoError(t, err)
-			assert.Equal(t, expectedRq, string(rq))
+			assert.Equal(t, expectedCall.rq, string(rq))
 		}
-		w.WriteHeader(params["statusCode"].(int))
-		rs, ok := params["response"]
-		if ok {
-			w.Write([]byte(rs.(string)))
+		w.WriteHeader(expectedCall.status)
+		if expectedCall.rs != "" {
+			w.Write([]byte(expectedCall.rs))
 		}
+		*i = *i + 1
 	}))
 
 	return ts

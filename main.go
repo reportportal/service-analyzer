@@ -78,23 +78,17 @@ func main() {
 			}
 		})
 
-		router.HandleFunc(pat.Post("/:project/_index"), func(w http.ResponseWriter, rq *http.Request) {
-			project := pat.Param(rq, "project")
-
-			createIndexIfNotExists(project, c)
-
+		router.HandleFunc(pat.Post("/_index"), func(w http.ResponseWriter, rq *http.Request) {
 			handleLauchRequest(w, rq,
-				func(launch *Launch) (interface{}, error) {
-					return c.IndexLogs(project, launch)
+				func(launches []Launch) (interface{}, error) {
+					return c.IndexLogs(launches)
 				})
 		})
 
-		router.HandleFunc(pat.Post("/:project/_analyze"), func(w http.ResponseWriter, rq *http.Request) {
-			project := pat.Param(rq, "project")
-
+		router.HandleFunc(pat.Post("/_analyze"), func(w http.ResponseWriter, rq *http.Request) {
 			handleLauchRequest(w, rq,
-				func(launch *Launch) (interface{}, error) {
-					return c.AnalyzeLogs(project, launch)
+				func(launches []Launch) (interface{}, error) {
+					return c.AnalyzeLogs(launches)
 				})
 		})
 	})
@@ -102,14 +96,14 @@ func main() {
 	srv.StartServer()
 }
 
-type launchHandler func(*Launch) (interface{}, error)
+type launchHandler func([]Launch) (interface{}, error)
 
 func handleLauchRequest(w http.ResponseWriter, rq *http.Request, handler launchHandler) {
-	launch, err := readRequestBody(rq)
+	launches, err := readRequestBody(rq)
 	if err != nil {
 		commons.WriteJSON(http.StatusBadRequest, err, w)
 	} else {
-		rs, err := handler(launch)
+		rs, err := handler(launches)
 		if err != nil {
 			commons.WriteJSON(http.StatusInternalServerError, err, w)
 		} else {
@@ -118,7 +112,7 @@ func handleLauchRequest(w http.ResponseWriter, rq *http.Request, handler launchH
 	}
 }
 
-func readRequestBody(rq *http.Request) (*Launch, error) {
+func readRequestBody(rq *http.Request) ([]Launch, error) {
 	defer rq.Body.Close()
 
 	rqBody, err := ioutil.ReadAll(rq.Body)
@@ -126,22 +120,11 @@ func readRequestBody(rq *http.Request) (*Launch, error) {
 		return nil, err
 	}
 
-	launch := &Launch{}
-	err = json.Unmarshal(rqBody, launch)
+	launches := []Launch{}
+	err = json.Unmarshal(rqBody, &launches)
 	if err != nil {
 		return nil, err
 	}
 
-	return launch, err
-}
-
-func createIndexIfNotExists(indexName string, c ESClient) error {
-	exists, err := c.IndexExists(indexName)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		_, err = c.CreateIndex(indexName)
-	}
-	return err
+	return launches, err
 }

@@ -1,5 +1,6 @@
-{
+[{
     "launchId": "1234567891",
+    "project": "idx1",
     "launchName": "Launch with test items without logs",
     "testItems": [
         {
@@ -8,4 +9,4 @@
             "logs": []
         }
     ]
-}
+}]

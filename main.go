@@ -22,7 +22,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -57,36 +56,15 @@ func main() {
 			return handlers.LoggingHandler(os.Stdout, next)
 		})
 
-		router.HandleFunc(pat.Get("/"), func(w http.ResponseWriter, rq *http.Request) {
-			indices, err := c.ListIndices()
-			if err != nil {
-				commons.WriteJSON(http.StatusInternalServerError, err, w)
-			} else {
-				commons.WriteJSON(http.StatusOK, indices, w)
-			}
-		})
-
-		router.HandleFunc(pat.Delete("/:project"), func(w http.ResponseWriter, rq *http.Request) {
-			project := pat.Param(rq, "project")
-			_, err := c.DeleteIndex(project)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(w, "Unable to delete index '%s'\n", project)
-			} else {
-				w.WriteHeader(http.StatusOK)
-				fmt.Fprintf(w, "Index '%s' successfully deleted\n", project)
-			}
-		})
-
 		router.HandleFunc(pat.Post("/_index"), func(w http.ResponseWriter, rq *http.Request) {
-			handleLauchRequest(w, rq,
+			handleRequest(w, rq,
 				func(launches []Launch) (interface{}, error) {
 					return c.IndexLogs(launches)
 				})
 		})
 
 		router.HandleFunc(pat.Post("/_analyze"), func(w http.ResponseWriter, rq *http.Request) {
-			handleLauchRequest(w, rq,
+			handleRequest(w, rq,
 				func(launches []Launch) (interface{}, error) {
 					return c.AnalyzeLogs(launches)
 				})
@@ -96,9 +74,9 @@ func main() {
 	srv.StartServer()
 }
 
-type launchHandler func([]Launch) (interface{}, error)
+type requestHandler func([]Launch) (interface{}, error)
 
-func handleLauchRequest(w http.ResponseWriter, rq *http.Request, handler launchHandler) {
+func handleRequest(w http.ResponseWriter, rq *http.Request, handler requestHandler) {
 	launches, err := readRequestBody(rq)
 	if err != nil {
 		commons.WriteJSON(http.StatusBadRequest, err, w)

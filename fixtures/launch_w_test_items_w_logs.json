@@ -1,0 +1,23 @@
+[{
+    "launchId": "1234567892",
+    "project": "idx2",
+    "launchName": "Launch with test items with logs",
+    "testItems": [
+        {
+            "testItemId": "0002",
+            "issueType": "TI001",
+            "logs": [
+                {
+                    "logId": "0001",
+                    "logLevel": 40000,
+                    "message": "Message 1"
+                },
+                {
+                    "logId": "0002",
+                    "logLevel": 40000,
+                    "message": "Message 2"
+                }
+            ]
+        }
+    ]
+}]

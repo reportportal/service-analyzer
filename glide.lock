@@ -1,5 +1,5 @@
 hash: 04475dea740bda214bdf40420652427b9c16fc1cb9f9613052f5e62c7c6127bc
-updated: 2017-07-06T14:23:34.742339803+03:00
+updated: 2017-07-18T13:48:23.699813963+03:00
 imports:
 - name: github.com/cenkalti/backoff
   version: 4dc77674aceaabba2c7e3da25d4c823edfb73f99
@@ -12,7 +12,7 @@ imports:
 - name: github.com/gorilla/handlers
   version: a4043c62cc2329bacda331d33fc908ab11ef0ec3
 - name: github.com/hashicorp/consul
-  version: f7907db85fdf47cb8431f8aefdaa5c9bef53a010
+  version: e2f93518e9957101ada32b803575a7b72a723360
   subpackages:
   - api
 - name: github.com/hashicorp/go-cleanhttp
@@ -31,13 +31,13 @@ imports:
   - json/scanner
   - json/token
 - name: github.com/hashicorp/serf
-  version: 91fd53b1d3e624389ed9a295a3fa380e5c7b9dfc
+  version: e39abe475740649229c5c72b0cc1da10da7ed23a
   subpackages:
   - coordinate
 - name: github.com/hudl/fargo
-  version: b8c97836937cfa927268b01e1127d137d3da4a12
+  version: 14ced469f7dc175f6fbf9f55d799f9f12e302965
 - name: github.com/magiconair/properties
-  version: 51463bfca2576e06c62a8504b5c0f06d61312647
+  version: be5ece7dd465ab0765a9682137865547526d1dfb
 - name: github.com/miekg/dns
   version: f01e44c2fdbf755201344b5b7917f974a4badd13
 - name: github.com/mitchellh/go-homedir
@@ -49,7 +49,7 @@ imports:
 - name: github.com/pelletier/go-toml
   version: 69d355db5304c0f7f809a2edc054553e7142f016
 - name: github.com/reportportal/commons-go
-  version: e82d4fe36aa4e93a35b793850a9cdaec61d785f2
+  version: 6c0e7d8bb557889e55c5a870a2377d4d114cb7c2
   subpackages:
   - commons
   - conf
@@ -75,15 +75,15 @@ imports:
   - pat
   - pattern
 - name: golang.org/x/net
-  version: 570fa1c91359c1869590e9cedf3b53162a51a167
+  version: f01ecb60fe3835d80d9a0b7b2bf24b228c89260e
   subpackages:
   - context
 - name: golang.org/x/sys
-  version: 6faef541c73732f438fb660a212750a9ba9f9362
+  version: abf9c25f54453410d0c6668e519582a9e1115027
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 2bf8f2a19ec09c670e931282edfe6567f6be21c9
+  version: cfdf022e86b4ecfb646e1efbd7db175dd623a8fa
   subpackages:
   - transform
   - unicode/norm
@@ -94,7 +94,7 @@ imports:
   - token
   - types
 - name: gopkg.in/yaml.v2
-  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
+  version: 1be3d31502d6eabc0dd7ce5b0daab022e14a5538
 testImports:
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9

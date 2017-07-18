@@ -38,7 +38,7 @@ func main() {
 	defaults := map[string]interface{}{
 		"AppName":             "analyzer",
 		"Registry":            nil,
-		"Server.Port":         9000,
+		"Server.Port":         8080,
 		"Elasticsearch.Hosts": "http://localhost:9200",
 	}
 

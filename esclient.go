@@ -200,7 +200,7 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 
 	rs := &Response{}
 
-	return rs, sendOpRequest("PUT", url, rs, body)
+	return rs, sendOpRequest(http.MethodPut, url, rs, body)
 }
 
 func (c *client) IndexExists(name string) (bool, error) {
@@ -218,7 +218,7 @@ func (c *client) IndexExists(name string) (bool, error) {
 func (c *client) DeleteIndex(name string) (*Response, error) {
 	url := c.buildURL(name)
 	rs := &Response{}
-	return rs, sendOpRequest("DELETE", url, rs)
+	return rs, sendOpRequest(http.MethodDelete, url, rs)
 }
 
 func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
@@ -264,7 +264,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 
 	url := c.buildURL("_bulk")
 
-	return rs, sendOpRequest("PUT", url, rs, bodies...)
+	return rs, sendOpRequest(http.MethodPut, url, rs, bodies...)
 }
 
 func (c *client) AnalyzeLogs(launches []Launch) ([]Launch, error) {
@@ -280,7 +280,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]Launch, error) {
 				query := buildQuery(lc.LaunchName, message)
 
 				rs := &SearchResult{}
-				err := sendOpRequest("GET", url, rs, query)
+				err := sendOpRequest(http.MethodGet, url, rs, query)
 				if err != nil {
 					return nil, err
 				}

@@ -26,44 +26,47 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-chi/chi"
 	"github.com/gorilla/handlers"
 	"github.com/reportportal/commons-go/commons"
 	"github.com/reportportal/commons-go/conf"
 	"github.com/reportportal/commons-go/server"
-	"goji.io"
-	"goji.io/pat"
+	"log"
 )
 
 func main() {
-	defaults := map[string]interface{}{
-		"AppName":             "analyzer",
-		"Registry":            nil,
-		"Server.Port":         8080,
-		"Elasticsearch.Hosts": "http://localhost:9200",
+	defaults := map[string]string{
+		"ES_HOSTS": "http://elasticsearch:9200",
 	}
 
-	rpConf := conf.LoadConfig("", defaults)
+	cfg := conf.EmptyConfig()
+
+	rpConf, err := conf.LoadConfig(cfg, defaults)
+	if nil != err {
+		log.Fatalf("Cannot load configuration")
+	}
+	rpConf.AppName = "analyzer"
 
 	info := commons.GetBuildInfo()
 	info.Name = "Service Analyzer"
 
 	srv := server.New(rpConf, info)
 
-	c := NewClient(rpConf.Get("Elasticsearch.Hosts").(string))
+	c := NewClient(rpConf.Get("ES_HOSTS"))
 
-	srv.AddRoute(func(router *goji.Mux) {
+	srv.AddRoute(func(router *chi.Mux) {
 		router.Use(func(next http.Handler) http.Handler {
 			return handlers.LoggingHandler(os.Stdout, next)
 		})
 
-		router.HandleFunc(pat.Post("/_index"), func(w http.ResponseWriter, rq *http.Request) {
+		router.MethodFunc(http.MethodPost, "/_index", func(w http.ResponseWriter, rq *http.Request) {
 			handleRequest(w, rq,
 				func(launches []Launch) (interface{}, error) {
 					return c.IndexLogs(launches)
 				})
 		})
 
-		router.HandleFunc(pat.Post("/_analyze"), func(w http.ResponseWriter, rq *http.Request) {
+		router.MethodFunc(http.MethodPost, "/_analyze", func(w http.ResponseWriter, rq *http.Request) {
 			handleRequest(w, rq,
 				func(launches []Launch) (interface{}, error) {
 					return c.AnalyzeLogs(launches)

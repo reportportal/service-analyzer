@@ -65,7 +65,7 @@ func TestListIndices(t *testing.T) {
 	}{
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/_cat/indices?format=json",
 					rs:     "[]",
@@ -77,7 +77,7 @@ func TestListIndices(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/_cat/indices?format=json",
 					rs:     getFixture(TwoIndicesRs),
@@ -89,7 +89,7 @@ func TestListIndices(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/_cat/indices?format=json",
 					status: http.StatusInternalServerError,
@@ -129,7 +129,7 @@ func TestCreateIndex(t *testing.T) {
 	}{
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "PUT",
 					uri:    "/idx0",
 					rs:     getFixture(IndexCreatedRs),
@@ -141,7 +141,7 @@ func TestCreateIndex(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "PUT",
 					uri:    "/idx1",
 					rs:     getFixture(IndexAlreadyExistsRs),
@@ -180,7 +180,7 @@ func TestIndexExists(t *testing.T) {
 	}{
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "HEAD",
 					uri:    "/idx0",
 					status: http.StatusOK,
@@ -191,7 +191,7 @@ func TestIndexExists(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "HEAD",
 					uri:    "/idx1",
 					status: http.StatusNotFound,
@@ -225,7 +225,7 @@ func TestDeleteIndex(t *testing.T) {
 	}{
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "DELETE",
 					uri:    "/idx0",
 					rs:     getFixture(IndexDeletedRs),
@@ -237,7 +237,7 @@ func TestDeleteIndex(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "DELETE",
 					uri:    "/idx1",
 					rs:     getFixture(IndexNotFoundRs),
@@ -271,7 +271,7 @@ func TestIndexLogs(t *testing.T) {
 	}{
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "HEAD",
 					uri:    "/idx0",
 					status: http.StatusOK,
@@ -281,7 +281,7 @@ func TestIndexLogs(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "HEAD",
 					uri:    "/idx1",
 					status: http.StatusOK,
@@ -291,18 +291,18 @@ func TestIndexLogs(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "HEAD",
 					uri:    "/idx2",
 					status: http.StatusNotFound,
 				},
-				ServerCall{
+				{
 					method: "PUT",
 					uri:    "/idx2",
 					rs:     getFixture(IndexCreatedRs),
 					status: http.StatusOK,
 				},
-				ServerCall{
+				{
 					method: "PUT",
 					uri:    "/_bulk",
 					rq:     getFixture(IndexLogsRq),
@@ -347,14 +347,14 @@ func TestAnalyzeLogs(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/idx2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(NoHitsSearchRs),
 					status: http.StatusOK,
 				},
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/idx2/log/_search",
 					rq:     getFixture(SearchRq),
@@ -366,14 +366,14 @@ func TestAnalyzeLogs(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/idx2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(NoHitsSearchRs),
 					status: http.StatusOK,
 				},
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/idx2/log/_search",
 					rq:     getFixture(SearchRq),
@@ -386,14 +386,14 @@ func TestAnalyzeLogs(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/idx2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(OneHitSearchRs),
 					status: http.StatusOK,
 				},
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/idx2/log/_search",
 					rq:     getFixture(SearchRq),
@@ -406,14 +406,14 @@ func TestAnalyzeLogs(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/idx2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(TwoHitsSearchRs),
 					status: http.StatusOK,
 				},
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/idx2/log/_search",
 					rq:     getFixture(SearchRq),
@@ -426,14 +426,14 @@ func TestAnalyzeLogs(t *testing.T) {
 		},
 		{
 			calls: []ServerCall{
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/idx2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(NoHitsSearchRs),
 					status: http.StatusOK,
 				},
-				ServerCall{
+				{
 					method: "GET",
 					uri:    "/idx2/log/_search",
 					rq:     getFixture(SearchRq),

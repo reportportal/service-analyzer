@@ -397,6 +397,7 @@ func calculateScores(rs *SearchResult, k int, issueTypes map[string]float64) {
 func sendOpRequest(method, url string, response interface{}, bodies ...interface{}) error {
 	rs, err := sendRequest(method, url, bodies...)
 	if err != nil {
+
 		return err
 	}
 
@@ -434,15 +435,19 @@ func sendRequest(method, url string, bodies ...interface{}) ([]byte, error) {
 	client := &http.Client{}
 	rs, err := client.Do(rq)
 	if err != nil {
+		log.Errorf("Cannot send request to ES: %s", err.Error())
+
 		return nil, errors.Wrap(err, "Cannot send request to ES")
 	}
 	defer rs.Body.Close()
 
 	rsBody, err := ioutil.ReadAll(rs.Body)
 	if err != nil {
+		log.Errorf("Cannot ES response: %s", err.Error())
 		return nil, errors.Wrap(err, "Cannot read ES response")
 	}
 
+	log.Infof("ES responded with %d status code", rs.StatusCode)
 	if rs.StatusCode > http.StatusCreated && rs.StatusCode < http.StatusNotFound {
 		body := string(rsBody)
 		log.Errorf("ES communication error. Status code %d, Body %s", rs.StatusCode, body)

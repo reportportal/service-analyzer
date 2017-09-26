@@ -39,7 +39,9 @@ func main() {
 		"ES_HOSTS": "http://elasticsearch:9200",
 	}
 
+
 	cfg := conf.EmptyConfig()
+	cfg.Consul.Address = "registry:8500"
 
 	rpConf, err := conf.LoadConfig(cfg, defaults)
 	if nil != err {

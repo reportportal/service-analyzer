@@ -31,14 +31,25 @@ import (
 	"github.com/reportportal/commons-go/commons"
 	"github.com/reportportal/commons-go/conf"
 	"github.com/reportportal/commons-go/server"
-	"log"
+	"github.com/sirupsen/logrus"
 )
 
+var log = logrus.New()
+
+func init() {
+	// Log as JSON instead of the default ASCII formatter.
+	log.Formatter = &logrus.TextFormatter{}
+
+	// Output to stdout instead of the default stderr
+	// Can be any io.Writer, see below for File example
+	log.Out = os.Stdout
+}
+
 func main() {
+
 	defaults := map[string]string{
 		"ES_HOSTS": "http://elasticsearch:9200",
 	}
-
 
 	cfg := conf.EmptyConfig()
 	cfg.Consul.Address = "registry:8500"

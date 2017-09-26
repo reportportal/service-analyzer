@@ -443,15 +443,11 @@ func sendRequest(method, url string, bodies ...interface{}) ([]byte, error) {
 		return nil, errors.Wrap(err, "Cannot read ES response")
 	}
 
-	if !success(rs.StatusCode) {
+	if rs.StatusCode > http.StatusCreated && rs.StatusCode < http.StatusNotFound {
 		body := string(rsBody)
 		log.Errorf("ES communication error. Status code %d, Body %s", rs.StatusCode, body)
 		return nil, errors.New(body)
 	}
 
 	return rsBody, nil
-}
-
-func success(statusCode int) bool {
-	return (statusCode / 100) <= 2
 }

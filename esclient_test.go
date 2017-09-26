@@ -217,11 +217,6 @@ func TestIndexExists(t *testing.T) {
 	}
 }
 
-func TestSuccess(t *testing.T) {
-	assert.Equal(t, false, success(400))
-	assert.Equal(t, true, success(200))
-}
-
 func TestDeleteIndex(t *testing.T) {
 	tests := []struct {
 		calls          []ServerCall

@@ -445,7 +445,7 @@ func sendRequest(method, url string, bodies ...interface{}) ([]byte, error) {
 
 	if !success(rs.StatusCode) {
 		body := string(rsBody)
-		log.Errorf("ES communication error. Status code %d, Body", rs.StatusCode, body)
+		log.Errorf("ES communication error. Status code %d, Body %s", rs.StatusCode, body)
 		return nil, errors.New(body)
 	}
 

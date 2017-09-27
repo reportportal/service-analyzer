@@ -86,6 +86,7 @@ type Launch struct {
 	LaunchName string `json:"launchName,omitempty"`
 	TestItems []struct {
 		TestItemID        string `json:"testItemId,required"`
+		UniqueID          string `json:"uniqueId,required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs []struct {
@@ -246,6 +247,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 				body := map[string]interface{}{
 					"launch_name": lc.LaunchName,
 					"test_item":   ti.TestItemID,
+					"unique_id":   ti.UniqueID,
 					"issue_type":  ti.IssueType,
 					"log_level":   l.LogLevel,
 					"message":     message,
@@ -359,6 +361,10 @@ func buildQuery(launchName, logMessage string) interface{} {
 					"term": map[string]interface{}{
 						"launch_name": map[string]interface{}{
 							"value": launchName,
+							"boost": 2.0,
+						},
+						"unique_id": map[string]interface{}{
+							"value": un,
 							"boost": 2.0,
 						},
 					},

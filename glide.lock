@@ -38,7 +38,7 @@ imports:
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/reportportal/commons-go
-  version: 38eafd5be250587c873e28f8d0262fd48b13c192
+  version: 7aec3cbce3366e5c1e74079aef9316e71359e4ae
   subpackages:
   - commons
   - conf

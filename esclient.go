@@ -75,9 +75,9 @@ type BulkResponse struct {
 			ID      string `json:"_id,omitempty"`
 			Version int    `json:"_version,omitempty"`
 			Result  string `json:"result,omitempty"`
+			Created bool   `json:"created,omitempty"`
+			Status  int `json:"status,omitempty"`
 		} `json:"index,omitempty"`
-		Created bool   `json:"created,omitempty"`
-		Status  string `json:"status,omitempty"`
 	} `json:"items,omitempty"`
 	Status int `json:"status,omitempty"`
 }
@@ -458,6 +458,7 @@ func sendRequest(method, url string, bodies ...interface{}) ([]byte, error) {
 		log.Errorf("Cannot ES response: %s", err.Error())
 		return nil, errors.Wrap(err, "Cannot read ES response")
 	}
+	fmt.Println(string(rsBody))
 
 	log.Infof("ES responded with %d status code", rs.StatusCode)
 	if rs.StatusCode > http.StatusCreated && rs.StatusCode < http.StatusNotFound {

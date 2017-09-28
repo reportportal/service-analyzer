@@ -195,6 +195,9 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 					"launch_name": map[string]interface{}{
 						"type": "keyword",
 					},
+					"unique_id": map[string]interface{}{
+						"type": "keyword",
+					},
 				},
 			},
 		},

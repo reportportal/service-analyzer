@@ -5,6 +5,7 @@
     "testItems": [
         {
             "testItemId": "0001",
+            "uniqueId": "unique1",
             "issueType": "TI001",
             "logs": []
         }

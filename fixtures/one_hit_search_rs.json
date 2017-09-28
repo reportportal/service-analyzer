@@ -20,7 +20,8 @@
                     "launch_name": "Launch 1",
                     "log_level": 40000,
                     "message": "Message AB",
-                    "test_item": "0001"
+                    "test_item": "0001",
+                    "unique_id": "unique1"
                 }
             }
         ]

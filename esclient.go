@@ -24,13 +24,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
-	"github.com/pkg/errors"
 )
+
+//ErrorLoggingLevel is integer representation of ERROR logging level
+const ErrorLoggingLevel int = 40000
 
 // ESClient interface
 type ESClient interface {
@@ -86,6 +89,7 @@ type Launch struct {
 	LaunchName string `json:"launchName,omitempty"`
 	TestItems []struct {
 		TestItemID        string `json:"testItemId,required"`
+		UniqueID          string `json:"uniqueId,required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs []struct {
@@ -191,6 +195,9 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 					"launch_name": map[string]interface{}{
 						"type": "keyword",
 					},
+					"unique_id": map[string]interface{}{
+						"type": "keyword",
+					},
 				},
 			},
 		},
@@ -246,6 +253,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 				body := map[string]interface{}{
 					"launch_name": lc.LaunchName,
 					"test_item":   ti.TestItemID,
+					"unique_id":   ti.UniqueID,
 					"issue_type":  ti.IssueType,
 					"log_level":   l.LogLevel,
 					"message":     message,
@@ -277,7 +285,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]Launch, error) {
 			for _, l := range ti.Logs {
 				message := c.sanitizeText(l.Message)
 
-				query := buildQuery(lc.LaunchName, message)
+				query := buildQuery(lc.LaunchName, ti.UniqueID, message)
 
 				rs := &SearchResult{}
 				err := sendOpRequest(http.MethodGet, url, rs, query)
@@ -326,7 +334,7 @@ func (c *client) buildURL(pathElements ...string) string {
 	return c.hosts[0] + "/" + strings.Join(pathElements, "/")
 }
 
-func buildQuery(launchName, logMessage string) interface{} {
+func buildQuery(launchName, uniqueID, logMessage string) interface{} {
 	return map[string]interface{}{
 		"size": 10,
 		"query": map[string]interface{}{
@@ -339,7 +347,7 @@ func buildQuery(launchName, logMessage string) interface{} {
 				"must": []interface{}{
 					map[string]interface{}{
 						"term": map[string]interface{}{
-							"log_level": 40000,
+							"log_level": ErrorLoggingLevel,
 						},
 					},
 					map[string]interface{}{
@@ -359,6 +367,10 @@ func buildQuery(launchName, logMessage string) interface{} {
 					"term": map[string]interface{}{
 						"launch_name": map[string]interface{}{
 							"value": launchName,
+							"boost": 2.0,
+						},
+						"unique_id": map[string]interface{}{
+							"value": uniqueID,
 							"boost": 2.0,
 						},
 					},

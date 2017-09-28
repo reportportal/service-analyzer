@@ -4,6 +4,7 @@
     "launchName": "Launch with test items with logs",
     "testItems": [
         {
+            "uniqueId": "unique1",
             "testItemId": "0002",
             "issueType": "TI001",
             "logs": [

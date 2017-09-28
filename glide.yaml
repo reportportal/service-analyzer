@@ -7,10 +7,6 @@ import:
   - commons
   - conf
   - server
-- package: goji.io
-  version: v2.0
-  subpackages:
-  - pat
 - package: github.com/sirupsen/logrus
   version: ^1.0.3
 - package: github.com/pkg/errors

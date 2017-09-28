@@ -20,7 +20,8 @@
                     "launch_name": "Launch 1",
                     "log_level": 40000,
                     "message": "Message AB",
-                    "test_item": "0001"
+                    "test_item": "0001",
+                    "unique_id": "0001"
                 }
             },
             {
@@ -33,7 +34,8 @@
                     "launch_name": "Launch 1",
                     "log_level": 40000,
                     "message": "Message PB",
-                    "test_item": "0001"
+                    "test_item": "0001",
+                    "unique_id": "0001"
                 }
             },
             {
@@ -46,7 +48,8 @@
                     "launch_name": "Launch 1",
                     "log_level": 40000,
                     "message": "Message PB",
-                    "test_item": "0001"
+                    "test_item": "0001",
+                    "unique_id": "0001"
                 }
             }
         ]

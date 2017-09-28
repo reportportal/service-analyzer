@@ -24,13 +24,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
-	"github.com/pkg/errors"
 )
+
+//ErrorLoggingLevel is integer representation of ERROR logging level
+const ErrorLoggingLevel int = 40000
 
 // ESClient interface
 type ESClient interface {
@@ -279,7 +282,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]Launch, error) {
 			for _, l := range ti.Logs {
 				message := c.sanitizeText(l.Message)
 
-				query := buildQuery(lc.LaunchName, message)
+				query := buildQuery(lc.LaunchName, ti.UniqueID, message)
 
 				rs := &SearchResult{}
 				err := sendOpRequest(http.MethodGet, url, rs, query)
@@ -328,7 +331,7 @@ func (c *client) buildURL(pathElements ...string) string {
 	return c.hosts[0] + "/" + strings.Join(pathElements, "/")
 }
 
-func buildQuery(launchName, logMessage string) interface{} {
+func buildQuery(launchName, uniqueID, logMessage string) interface{} {
 	return map[string]interface{}{
 		"size": 10,
 		"query": map[string]interface{}{
@@ -341,7 +344,7 @@ func buildQuery(launchName, logMessage string) interface{} {
 				"must": []interface{}{
 					map[string]interface{}{
 						"term": map[string]interface{}{
-							"log_level": 40000,
+							"log_level": ErrorLoggingLevel,
 						},
 					},
 					map[string]interface{}{
@@ -364,7 +367,7 @@ func buildQuery(launchName, logMessage string) interface{} {
 							"boost": 2.0,
 						},
 						"unique_id": map[string]interface{}{
-							"value": un,
+							"value": uniqueID,
 							"boost": 2.0,
 						},
 					},

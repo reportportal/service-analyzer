@@ -61,7 +61,7 @@ func main() {
 	rpConf.AppName = "analyzer"
 
 	info := commons.GetBuildInfo()
-	info.Name = "Service Analyzer"
+	info.Name = "Analysis Service"
 
 	srv := server.New(rpConf, info)
 

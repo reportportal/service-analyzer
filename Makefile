@@ -11,7 +11,7 @@ GODIRS_NOVENDOR = $(shell go list ./... | grep -v /vendor/)
 GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 PACKAGE_COMMONS=github.com/reportportal/service-analyzer/vendor/github.com/reportportal/commons-go
 
-BUILD_INFO_LDFLAGS=-ldflags "-X ${PACKAGE_COMMONS}/commons.branch=${COMMIT_HASH} -X ${PACKAGE_COMMONS}/commons.buildDate=${BUILD_DATE} -X ${PACKAGE_COMMONS}/commons.version=${v}"
+BUILD_INFO_LDFLAGS=-ldflags "-X ${PACKAGE_COMMONS}/commons.branch=${COMMIT_HASH} -X ${PACKAGE_COMMONS}/commons.buildDate=${BUILD_DATE} -X ${PACKAGE_COMMONS}/commons.version=${VERSION}"
 IMAGE_NAME=reportportal/service-analyzer$(IMAGE_POSTFIX)
 
 .PHONY: vendor test build
@@ -22,18 +22,17 @@ help:
 	@echo "checkstyle - gofmt+golint+misspell"
 
 vendor:
-	$(GO) get -v github.com/Masterminds/glide
-	cd $(GOPATH)/src/github.com/Masterminds/glide && git checkout tags/v0.12.3 && go install && cd -
+	$(if $(shell which glide 2>/dev/null),$(echo "Glide is already installed..."),$(shell go get github.com/Masterminds/glide))
 	glide install
 
 get-build-deps: vendor
 	$(GO) get $(BUILD_DEPS)
 	gometalinter --install
 
-test: vendor
+test:
 	go test $(glide novendor)
 
-checkstyle: get-build-deps
+checkstyle:
 	gometalinter --vendor ./... --fast --disable=gas --disable=errcheck --disable=gotype --deadline 10m
 
 fmt:
@@ -46,7 +45,7 @@ build: checkstyle test
 
 # Builds the container
 build-image:
-	docker build -t "$(IMAGE_NAME)" -f Dockerfile .
+	docker build -t "$(IMAGE_NAME)" --build-arg version=${VERSION} -f Dockerfile .
 
 
 # Builds the container and pushes to private registry

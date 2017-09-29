@@ -48,11 +48,12 @@ func init() {
 func main() {
 
 	defaults := map[string]string{
-		"ES_HOSTS": "http://elasticsearch:9200",
+		"ES_HOSTS": "http://localhost:9200",
 	}
 
 	cfg := conf.EmptyConfig()
 	cfg.Consul.Address = "registry:8500"
+	cfg.Consul.Tags = []string{"urlprefix-/analyzer opts strip=/analyzer"}
 
 	rpConf, err := conf.LoadConfig(cfg, defaults)
 	if nil != err {
@@ -62,6 +63,8 @@ func main() {
 
 	info := commons.GetBuildInfo()
 	info.Name = "Analysis Service"
+
+	cfg.Server.Port = 8686
 
 	srv := server.New(rpConf, info)
 

@@ -13,8 +13,10 @@ node {
         }
 
         stage('Build') {
-            withEnv(["IMAGE_POSTFIX=-dev", "VERSION=`cat VERSION`-$BUILD_NUMBER"]) {
+            withEnv(["IMAGE_POSTFIX=-dev", "MAJOR_VERSION=${cat VERSION}", 'VERSION="$MAJOR_VERSION-$BUILD_NUMBER"']) {
                 docker.withServer("$DOCKER_HOST") {
+                    sh 'echo $MAJOR_VERSION'
+                    sh 'echo $VERSION'
                     stage('Build Docker Image') {
                         sh 'make build-image'
                     }

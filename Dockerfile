@@ -8,9 +8,11 @@ COPY Makefile ./
 COPY glide.yaml ./
 COPY glide.lock ./
 
+RUN export VERSION=$version
+
 RUN make get-build-deps
 COPY ./ ./
-RUN make build version=$version
+RUN make build
 
 FROM alpine:latest
 ARG service

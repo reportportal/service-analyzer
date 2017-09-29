@@ -15,7 +15,7 @@ node {
         stage('Build') {
             withEnv(["IMAGE_POSTFIX=-dev", "BUILD_NUMBER=${env.BUILD_NUMBER}"]) {
                 docker.withServer("$DOCKER_HOST") {
-                    sh 'export VERSION=`cat VERSION`-BUILD_NUMBER'
+                    sh 'export VERSION=`cat VERSION`-$BUILD_NUMBER'
                     stage('Build Docker Image') {
                         sh 'make build-image'
                     }

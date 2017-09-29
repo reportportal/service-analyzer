@@ -8,7 +8,7 @@ COPY Makefile ./
 COPY glide.yaml ./
 COPY glide.lock ./
 
-RUN export VERSION=$version
+ENV VERSION=$version
 
 RUN make get-build-deps
 COPY ./ ./

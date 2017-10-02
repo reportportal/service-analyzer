@@ -76,7 +76,7 @@ type BulkResponse struct {
 			Version int    `json:"_version,omitempty"`
 			Result  string `json:"result,omitempty"`
 			Created bool   `json:"created,omitempty"`
-			Status  int `json:"status,omitempty"`
+			Status  int    `json:"status,omitempty"`
 		} `json:"index,omitempty"`
 	} `json:"items,omitempty"`
 	Status int `json:"status,omitempty"`
@@ -363,17 +363,19 @@ func buildQuery(launchName, uniqueID, logMessage string) interface{} {
 						},
 					},
 				},
-				"should": map[string]interface{}{
-					"term": map[string]interface{}{
+				"should": []map[string]interface{}{
+					{"term": map[string]interface{}{
 						"launch_name": map[string]interface{}{
 							"value": launchName,
 							"boost": 2.0,
 						},
+					}},
+					{"term": map[string]interface{}{
 						"unique_id": map[string]interface{}{
 							"value": uniqueID,
 							"boost": 2.0,
 						},
-					},
+					}},
 				},
 			},
 		},

@@ -143,9 +143,9 @@ type client struct {
 }
 
 // NewClient creates new ESClient
-func NewClient(hosts string) ESClient {
+func NewClient(hosts []string) ESClient {
 	c := &client{}
-	c.hosts = strings.Split(hosts, ",")
+	c.hosts = hosts
 	c.re = regexp.MustCompile("\\d+")
 	return c
 }

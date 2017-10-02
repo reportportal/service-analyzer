@@ -47,30 +47,32 @@ func init() {
 
 func main() {
 
-	defaults := map[string]string{
-		"ES_HOSTS": "http://localhost:9200",
+	defCfg := conf.EmptyConfig()
+	defCfg.Consul.Address = "registry:8500"
+	defCfg.Consul.Tags = []string{"urlprefix-/analyzer opts strip=/analyzer"}
+	cfg := struct {
+		*conf.RpConfig
+		ESHosts []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
+	}{
+		RpConfig: defCfg,
 	}
 
-	cfg := conf.EmptyConfig()
-	cfg.Consul.Address = "registry:8500"
-	cfg.Consul.Tags = []string{"urlprefix-/analyzer opts strip=/analyzer"}
-
-	rpConf, err := conf.LoadConfig(cfg, defaults)
+	err := conf.LoadConfig(&cfg)
 	if nil != err {
 		log.Fatalf("Cannot load configuration")
 	}
-	rpConf.AppName = "analyzer"
 
+	cfg.AppName = "analyzer"
 	info := commons.GetBuildInfo()
 	info.Name = "Analysis Service"
 
-	cfg.Server.Port = 8686
+	log.Println(cfg.ESHosts)
 
-	srv := server.New(rpConf, info)
+	srv := server.New(cfg.RpConfig, info)
 
-	c := NewClient(rpConf.Get("ES_HOSTS"))
+	c := NewClient(cfg.ESHosts)
 
-	srv.AddRoute(func(router *chi.Mux) {
+	srv.WithRouter(func(router *chi.Mux) {
 		router.Use(func(next http.Handler) http.Handler {
 			return handlers.LoggingHandler(os.Stdout, next)
 		})

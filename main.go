@@ -66,8 +66,6 @@ func main() {
 	info := commons.GetBuildInfo()
 	info.Name = "Analysis Service"
 
-	log.Println(cfg.ESHosts)
-
 	srv := server.New(cfg.RpConfig, info)
 
 	c := NewClient(cfg.ESHosts)

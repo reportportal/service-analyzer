@@ -103,7 +103,7 @@ func TestListIndices(t *testing.T) {
 		i := 0
 		ts := startServer(t, test.calls, &i)
 		defer ts.Close()
-		c := NewClient(ts.URL)
+		c := NewClient([]string{ts.URL})
 
 		indices, err := c.ListIndices()
 
@@ -157,7 +157,7 @@ func TestCreateIndex(t *testing.T) {
 		i := 0
 		ts := startServer(t, test.calls, &i)
 		defer ts.Close()
-		c := NewClient(ts.URL)
+		c := NewClient([]string{ts.URL})
 
 		rs, err := c.CreateIndex(test.index)
 
@@ -206,7 +206,7 @@ func TestIndexExists(t *testing.T) {
 		i := 0
 		ts := startServer(t, test.calls, &i)
 		defer ts.Close()
-		c := NewClient(ts.URL)
+		c := NewClient([]string{ts.URL})
 
 		exists, err := c.IndexExists(test.index)
 
@@ -253,7 +253,7 @@ func TestDeleteIndex(t *testing.T) {
 		i := 0
 		ts := startServer(t, test.calls, &i)
 		defer ts.Close()
-		c := NewClient(ts.URL)
+		c := NewClient([]string{ts.URL})
 
 		rs, err := c.DeleteIndex(test.index)
 
@@ -318,7 +318,7 @@ func TestIndexLogs(t *testing.T) {
 		i := 0
 		ts := startServer(t, test.calls, &i)
 		defer ts.Close()
-		c := NewClient(ts.URL)
+		c := NewClient([]string{ts.URL})
 
 		launches := []Launch{}
 		err := json.Unmarshal([]byte(test.indexRq), &launches)
@@ -450,7 +450,7 @@ func TestAnalyzeLogs(t *testing.T) {
 		i := 0
 		ts := startServer(t, test.calls, &i)
 		defer ts.Close()
-		c := NewClient(ts.URL)
+		c := NewClient([]string{ts.URL})
 
 		launches := []Launch{}
 		err := json.Unmarshal([]byte(test.analyzeRq), &launches)

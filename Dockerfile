@@ -5,8 +5,12 @@ ARG version
 
 ## Copy makefile and glide before to be able to cache vendor
 COPY Makefile ./
+RUN make get-build-deps
+
 COPY glide.yaml ./
 COPY glide.lock ./
+
+RUN make vendor
 
 ENV VERSION=$version
 

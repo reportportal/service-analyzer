@@ -27,7 +27,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi"
-	"github.com/gorilla/handlers"
+	"github.com/go-chi/chi/middleware"
 	"github.com/reportportal/commons-go/commons"
 	"github.com/reportportal/commons-go/conf"
 	"github.com/reportportal/commons-go/server"
@@ -71,9 +71,7 @@ func main() {
 	c := NewClient(cfg.ESHosts)
 
 	srv.WithRouter(func(router *chi.Mux) {
-		router.Use(func(next http.Handler) http.Handler {
-			return handlers.LoggingHandler(os.Stdout, next)
-		})
+		router.Use(middleware.Logger)
 
 		router.MethodFunc(http.MethodPost, "/_index", func(w http.ResponseWriter, rq *http.Request) {
 			handleRequest(w, rq,

@@ -1,7 +1,9 @@
 sudo: required
 
-services:
-  - docker
+addons:
+  apt:
+    packages:
+      - docker-ce
 
 script:
   - make build-image VERSION=`cat VERSION`-$TRAVIS_BUILD_NUMBER

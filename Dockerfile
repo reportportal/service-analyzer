@@ -1,4 +1,4 @@
-FROM golang:1.9
+FROM golang:1.9.1
 
 WORKDIR /go/src/github.com/reportportal/service-analyzer/
 ARG version

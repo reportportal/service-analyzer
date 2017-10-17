@@ -458,7 +458,6 @@ func sendRequest(method, url string, bodies ...interface{}) ([]byte, error) {
 		log.Errorf("Cannot ES response: %s", err.Error())
 		return nil, errors.Wrap(err, "Cannot read ES response")
 	}
-	fmt.Println(string(rsBody))
 
 	log.Infof("ES responded with %d status code", rs.StatusCode)
 	if rs.StatusCode > http.StatusCreated && rs.StatusCode < http.StatusNotFound {

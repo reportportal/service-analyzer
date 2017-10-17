@@ -1,5 +1,5 @@
-hash: 89d067f3e8a3ce57ddc8690080702e78845f1ecaec2475a387f49d28ae7519d3
-updated: 2017-09-28T14:40:34.074031959+03:00
+hash: 4324e63fdeffbbb38c594267caa882ddbc8633e0f79f10af504fa0eb7d46ac83
+updated: 2017-10-17T18:36:54.787664026+03:00
 imports:
 - name: github.com/avarabyeu/env
   version: 4946e6742a05770376d9415afcaf28f67fd7b0e4
@@ -10,9 +10,15 @@ imports:
 - name: github.com/franela/goreq
   version: 9df54ca75ad62b6295f33ca96e16a2ca10bc137a
 - name: github.com/go-chi/chi
-  version: 04ec7fc4179604b2390947258f9143eaae23b596
+  version: f7c66f685bcab06bcce78ac212c5f3553c063d19
   subpackages:
   - middleware
+- name: github.com/go-playground/locales
+  version: 1e5f1161c6416a5ff48840eb8724a394e48cc534
+  subpackages:
+  - currency
+- name: github.com/go-playground/universal-translator
+  version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/gorilla/handlers
   version: a4043c62cc2329bacda331d33fc908ab11ef0ec3
 - name: github.com/hashicorp/consul
@@ -37,13 +43,6 @@ imports:
   version: d2e44aa77b7195c0ef782189985dd8550e22e4de
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
-- name: github.com/reportportal/commons-go
-  version: 981c7776894c46de5bc191c16887ee6860356513
-  subpackages:
-  - commons
-  - conf
-  - registry
-  - server
 - name: github.com/sirupsen/logrus
   version: f006c2ac4710855cf0f916dd6b77acf6b048dc6e
 - name: golang.org/x/crypto
@@ -65,6 +64,15 @@ imports:
   - scanner
   - token
   - types
+- name: gopkg.in/go-playground/validator.v9
+  version: a021b2ec9a8a8bb970f3f15bc42617cb520e8a64
+- name: gopkg.in/reportportal/commons-go.v1
+  version: 2b0558de8f79299e6fdefc9f512c8cfa1bf128fa
+  subpackages:
+  - commons
+  - conf
+  - registry
+  - server
 testImports:
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9

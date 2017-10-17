@@ -28,9 +28,9 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/gorilla/handlers"
-	"github.com/reportportal/commons-go/commons"
-	"github.com/reportportal/commons-go/conf"
-	"github.com/reportportal/commons-go/server"
+	"gopkg.in/reportportal/commons-go.v1/commons"
+	"gopkg.in/reportportal/commons-go.v1/conf"
+	"gopkg.in/reportportal/commons-go.v1/server"
 	"github.com/sirupsen/logrus"
 )
 
@@ -100,13 +100,13 @@ type requestHandler func([]Launch) (interface{}, error)
 func handleRequest(w http.ResponseWriter, rq *http.Request, handler requestHandler) {
 	launches, err := readRequestBody(rq)
 	if err != nil {
-		commons.WriteJSON(http.StatusBadRequest, err, w)
+		server.WriteJSON(http.StatusBadRequest, err, w)
 	} else {
 		rs, err := handler(launches)
 		if err != nil {
-			commons.WriteJSON(http.StatusInternalServerError, err, w)
+			server.WriteJSON(http.StatusInternalServerError, err, w)
 		} else {
-			commons.WriteJSON(http.StatusOK, rs, w)
+			server.WriteJSON(http.StatusOK, rs, w)
 		}
 	}
 }

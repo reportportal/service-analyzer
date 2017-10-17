@@ -2,7 +2,7 @@ package: github.com/reportportal/service-analyzer
 import:
 - package: github.com/gorilla/handlers
   version: v1.2.1
-- package: github.com/reportportal/commons-go
+- package: gopkg.in/reportportal/commons-go.v1
   subpackages:
   - commons
   - conf

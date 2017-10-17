@@ -31,6 +31,10 @@ import (
 	"gopkg.in/reportportal/commons-go.v1/commons"
 	"gopkg.in/reportportal/commons-go.v1/conf"
 	"gopkg.in/reportportal/commons-go.v1/server"
+	"github.com/go-chi/chi/middleware"
+	"github.com/reportportal/commons-go/commons"
+	"github.com/reportportal/commons-go/conf"
+	"github.com/reportportal/commons-go/server"
 	"github.com/sirupsen/logrus"
 )
 
@@ -66,16 +70,12 @@ func main() {
 	info := commons.GetBuildInfo()
 	info.Name = "Analysis Service"
 
-	log.Println(cfg.ESHosts)
-
 	srv := server.New(cfg.RpConfig, info)
 
 	c := NewClient(cfg.ESHosts)
 
 	srv.WithRouter(func(router *chi.Mux) {
-		router.Use(func(next http.Handler) http.Handler {
-			return handlers.LoggingHandler(os.Stdout, next)
-		})
+		router.Use(middleware.Logger)
 
 		router.MethodFunc(http.MethodPost, "/_index", func(w http.ResponseWriter, rq *http.Request) {
 			handleRequest(w, rq,

@@ -25,7 +25,7 @@ vendor:
 	$(if $(shell which glide 2>/dev/null),$(echo "Glide is already installed..."),$(shell go get github.com/Masterminds/glide))
 	glide install
 
-get-build-deps: vendor
+get-build-deps:
 	$(GO) get $(BUILD_DEPS)
 	gometalinter --install
 

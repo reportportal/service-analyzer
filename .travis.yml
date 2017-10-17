@@ -1,11 +1,13 @@
-language: go
+sudo: required
 
-go:
-  - 1.8.3
-install:
-   - go get -v github.com/Masterminds/glide
-   - cd $GOPATH/src/github.com/Masterminds/glide && git checkout tags/v0.12.3 && go install && cd -
-script: make build
+addons:
+  apt:
+    packages:
+      - docker-ce
+
+script:
+  - make build-image VERSION=`cat VERSION`-$TRAVIS_BUILD_NUMBER
+
 
 notifications:
   slack: reportportal-dev:fl6xWHVQp1jvsMmCJxYW9YKP

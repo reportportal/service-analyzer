@@ -93,9 +93,15 @@ type requestHandler func([]Launch) (interface{}, error)
 
 func handleRequest(w http.ResponseWriter, rq *http.Request, handler requestHandler) error {
 	var launches []Launch
-	err := server.ReadJSON(*rq, &launches)
+	err := server.ReadJSON(rq, &launches)
 	if err != nil {
 		return server.ToStatusError(http.StatusBadRequest, errors.WithStack(err))
+	}
+
+	for i, l := range launches {
+		if err := server.Validate(l); nil != err {
+			return server.ToStatusError(http.StatusBadRequest, errors.Wrapf(err, "Validation failed on Launch[%d]", i))
+		}
 	}
 
 	rs, err := handler(launches)

@@ -1,5 +1,5 @@
 hash: ca6c182d080ea6c348048a94ed9cb5e24ac68ed90e0451bfef4a7161989b5fe5
-updated: 2017-10-18T17:42:12.893848878+03:00
+updated: 2017-10-18T18:43:49.249267888+03:00
 imports:
 - name: github.com/avarabyeu/env
   version: 4946e6742a05770376d9415afcaf28f67fd7b0e4
@@ -65,7 +65,7 @@ imports:
 - name: gopkg.in/go-playground/validator.v9
   version: a021b2ec9a8a8bb970f3f15bc42617cb520e8a64
 - name: gopkg.in/reportportal/commons-go.v1
-  version: fa5431a8e1bf78945215f0495b320cfb538feeb2
+  version: 404213bf392ec62726bd76694597364e7146989d
   subpackages:
   - commons
   - conf

@@ -30,6 +30,7 @@ import (
 	"gopkg.in/reportportal/commons-go.v1/commons"
 	"gopkg.in/reportportal/commons-go.v1/conf"
 	"gopkg.in/reportportal/commons-go.v1/server"
+	"github.com/pkg/errors"
 )
 
 var log = logrus.New()
@@ -70,20 +71,19 @@ func main() {
 
 	srv.WithRouter(func(router *chi.Mux) {
 		router.Use(middleware.Logger)
+	})
 
-		router.MethodFunc(http.MethodPost, "/_index", func(w http.ResponseWriter, rq *http.Request) {
-			handleRequest(w, rq,
-				func(launches []Launch) (interface{}, error) {
-					return c.IndexLogs(launches)
-				})
-		})
-
-		router.MethodFunc(http.MethodPost, "/_analyze", func(w http.ResponseWriter, rq *http.Request) {
-			handleRequest(w, rq,
-				func(launches []Launch) (interface{}, error) {
-					return c.AnalyzeLogs(launches)
-				})
-		})
+	srv.AddHandler(http.MethodPost, "/_index", func(w http.ResponseWriter, rq *http.Request) error {
+		return handleRequest(w, rq,
+			func(launches []Launch) (interface{}, error) {
+				return c.IndexLogs(launches)
+			})
+	})
+	srv.AddHandler(http.MethodPost, "/_analyze", func(w http.ResponseWriter, rq *http.Request) error {
+		return handleRequest(w, rq,
+			func(launches []Launch) (interface{}, error) {
+				return c.AnalyzeLogs(launches)
+			})
 	})
 
 	srv.StartServer()
@@ -91,17 +91,19 @@ func main() {
 
 type requestHandler func([]Launch) (interface{}, error)
 
-func handleRequest(w http.ResponseWriter, rq *http.Request, handler requestHandler) {
-	launches := []Launch{}
-	err := server.ReadJSON(*rq, launches)
+func handleRequest(w http.ResponseWriter, rq *http.Request, handler requestHandler) error {
+	var launches []Launch
+	err := server.ReadJSON(*rq, &launches)
 	if err != nil {
-		server.WriteJSON(http.StatusBadRequest, err, w)
-	} else {
-		rs, err := handler(launches)
-		if err != nil {
-			server.WriteJSON(http.StatusInternalServerError, err, w)
-		} else {
-			server.WriteJSON(http.StatusOK, rs, w)
-		}
+		return server.ToStatusError(http.StatusBadRequest, errors.WithStack(err))
 	}
+
+	rs, err := handler(launches)
+	if err != nil {
+		return server.ToStatusError(http.StatusInternalServerError, errors.WithStack(err))
+	} else {
+		server.WriteJSON(http.StatusOK, rs, w)
+	}
+
+	return nil
 }

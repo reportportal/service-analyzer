@@ -84,17 +84,17 @@ type BulkResponse struct {
 
 // Launch struct
 type Launch struct {
-	LaunchID   string `json:"launchId,required"`
-	Project    string `json:"project,required"`
+	LaunchID   string `json:"launchId,required" validate:"required"`
+	Project    string `json:"project,required" validate:"required"`
 	LaunchName string `json:"launchName,omitempty"`
 	TestItems  []struct {
-		TestItemID        string `json:"testItemId,required"`
-		UniqueID          string `json:"uniqueId,required"`
+		TestItemID        string `json:"testItemId,required" validate:"required"`
+		UniqueID          string `json:"uniqueId,required" validate:"required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs              []struct {
 			LogLevel int    `json:"logLevel,omitempty"`
-			Message  string `json:"message,required"`
+			Message  string `json:"message,required" validate:"required"`
 		} `json:"logs,omitempty"`
 	} `json:"testItems,omitempty"`
 }

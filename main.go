@@ -93,7 +93,7 @@ type requestHandler func([]Launch) (interface{}, error)
 
 func handleRequest(w http.ResponseWriter, rq *http.Request, handler requestHandler) {
 	launches := []Launch{}
-	err := server.ReadJSON(*rq, &launches)
+	err := server.ReadJSON(*rq, launches)
 	if err != nil {
 		server.WriteJSON(http.StatusBadRequest, err, w)
 	} else {

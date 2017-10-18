@@ -21,17 +21,15 @@ along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"os"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/reportportal/commons-go.v1/commons"
 	"gopkg.in/reportportal/commons-go.v1/conf"
 	"gopkg.in/reportportal/commons-go.v1/server"
-	"github.com/go-chi/chi/middleware"
-	"github.com/sirupsen/logrus"
 )
 
 var log = logrus.New()
@@ -94,7 +92,8 @@ func main() {
 type requestHandler func([]Launch) (interface{}, error)
 
 func handleRequest(w http.ResponseWriter, rq *http.Request, handler requestHandler) {
-	launches, err := readRequestBody(rq)
+	launches := []Launch{}
+	err := server.ReadJSON(*rq, &launches)
 	if err != nil {
 		server.WriteJSON(http.StatusBadRequest, err, w)
 	} else {
@@ -105,21 +104,4 @@ func handleRequest(w http.ResponseWriter, rq *http.Request, handler requestHandl
 			server.WriteJSON(http.StatusOK, rs, w)
 		}
 	}
-}
-
-func readRequestBody(rq *http.Request) ([]Launch, error) {
-	defer rq.Body.Close()
-
-	rqBody, err := ioutil.ReadAll(rq.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	launches := []Launch{}
-	err = json.Unmarshal(rqBody, &launches)
-	if err != nil {
-		return nil, err
-	}
-
-	return launches, err
 }

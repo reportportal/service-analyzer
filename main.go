@@ -27,14 +27,10 @@ import (
 	"os"
 
 	"github.com/go-chi/chi"
-	"github.com/gorilla/handlers"
 	"gopkg.in/reportportal/commons-go.v1/commons"
 	"gopkg.in/reportportal/commons-go.v1/conf"
 	"gopkg.in/reportportal/commons-go.v1/server"
 	"github.com/go-chi/chi/middleware"
-	"github.com/reportportal/commons-go/commons"
-	"github.com/reportportal/commons-go/conf"
-	"github.com/reportportal/commons-go/server"
 	"github.com/sirupsen/logrus"
 )
 

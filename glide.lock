@@ -1,5 +1,5 @@
-hash: 4324e63fdeffbbb38c594267caa882ddbc8633e0f79f10af504fa0eb7d46ac83
-updated: 2017-10-17T18:36:54.787664026+03:00
+hash: 341c90d04c44e43fd9f5cf3a1808e6748212e3611865309633d90a5386d71db8
+updated: 2017-10-17T18:49:27.851268034+03:00
 imports:
 - name: github.com/avarabyeu/env
   version: 4946e6742a05770376d9415afcaf28f67fd7b0e4
@@ -19,8 +19,6 @@ imports:
   - currency
 - name: github.com/go-playground/universal-translator
   version: 71201497bace774495daed26a3874fd339e0b538
-- name: github.com/gorilla/handlers
-  version: a4043c62cc2329bacda331d33fc908ab11ef0ec3
 - name: github.com/hashicorp/consul
   version: 112c0603d3d6fb23ab5f15e8fdb1a761da8eaf9a
   subpackages:

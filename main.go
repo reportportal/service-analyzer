@@ -24,11 +24,11 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/reportportal/commons-go.v1/commons"
 	"gopkg.in/reportportal/commons-go.v1/conf"
 	"gopkg.in/reportportal/commons-go.v1/server"
-	"github.com/pkg/errors"
 )
 
 var log = logrus.New()

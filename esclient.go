@@ -55,7 +55,7 @@ type ESClient interface {
 // Response struct
 type Response struct {
 	Acknowledged bool `json:"acknowledged,omitempty"`
-	Error struct {
+	Error        struct {
 		RootCause []struct {
 			Type   string `json:"type,omitempty"`
 			Reason string `json:"reason,omitempty"`
@@ -70,7 +70,7 @@ type Response struct {
 type BulkResponse struct {
 	Took   int  `json:"took,omitempty"`
 	Errors bool `json:"errors,omitempty"`
-	Items []struct {
+	Items  []struct {
 		Index struct {
 			Index   string `json:"_index,omitempty"`
 			Type    string `json:"_type,omitempty"`
@@ -89,12 +89,12 @@ type Launch struct {
 	LaunchID   string `json:"launchId,required" validate:"required"`
 	Project    string `json:"project,required" validate:"required"`
 	LaunchName string `json:"launchName,omitempty"`
-	TestItems []struct {
+	TestItems  []struct {
 		TestItemID        string `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
-		Logs []struct {
+		Logs              []struct {
 			LogLevel int    `json:"logLevel,omitempty"`
 			Message  string `json:"message,required" validate:"required"`
 		} `json:"logs,omitempty"`
@@ -119,14 +119,14 @@ type Index struct {
 type SearchResult struct {
 	Took     int  `json:"took,omitempty"`
 	TimedOut bool `json:"timed_out,omitempty"`
-	Hits struct {
+	Hits     struct {
 		Total    int     `json:"total,omitempty"`
 		MaxScore float64 `json:"max_score,omitempty"`
-		Hits []struct {
-			Index string  `json:"_index,omitempty"`
-			Type  string  `json:"_type,omitempty"`
-			ID    string  `json:"_id,omitempty"`
-			Score float64 `json:"_score,omitempty"`
+		Hits     []struct {
+			Index  string  `json:"_index,omitempty"`
+			Type   string  `json:"_type,omitempty"`
+			ID     string  `json:"_id,omitempty"`
+			Score  float64 `json:"_score,omitempty"`
 			Source struct {
 				TestItem   string `json:"test_item,omitempty"`
 				IssueType  string `json:"issue_type,omitempty"`

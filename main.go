@@ -24,8 +24,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/reportportal/commons-go.v1/commons"
 	"gopkg.in/reportportal/commons-go.v1/conf"
@@ -69,8 +67,11 @@ func main() {
 
 	c := NewClient(cfg.ESHosts)
 
-	srv.WithRouter(func(router *chi.Mux) {
-		router.Use(middleware.Logger)
+	srv.AddHealthCheckFunc(func() error {
+		if !c.Healthy() {
+			return errors.New("ES Cluster is down")
+		}
+		return nil
 	})
 
 	srv.AddHandler(http.MethodPost, "/_index", func(w http.ResponseWriter, rq *http.Request) error {
@@ -99,17 +100,16 @@ func handleRequest(w http.ResponseWriter, rq *http.Request, handler requestHandl
 	}
 
 	for i, l := range launches {
-		if err := server.Validate(l); nil != err {
-			return server.ToStatusError(http.StatusBadRequest, errors.Wrapf(err, "Validation failed on Launch[%d]", i))
+		if valErr := server.Validate(l); nil != valErr {
+			return server.ToStatusError(http.StatusBadRequest, errors.Wrapf(valErr, "Validation failed on Launch[%d]", i))
 		}
 	}
 
 	rs, err := handler(launches)
 	if err != nil {
 		return server.ToStatusError(http.StatusInternalServerError, errors.WithStack(err))
-	} else {
-		server.WriteJSON(http.StatusOK, rs, w)
 	}
+	server.WriteJSON(http.StatusOK, rs, w)
 
 	return nil
 }

@@ -45,6 +45,8 @@ type ESClient interface {
 	IndexLogs(launches []Launch) (*BulkResponse, error)
 	AnalyzeLogs(launches []Launch) ([]Launch, error)
 
+	Healthy() bool
+
 	createIndexIfNotExists(indexName string) error
 	buildURL(pathElements ...string) string
 	sanitizeText(text string) string
@@ -53,7 +55,7 @@ type ESClient interface {
 // Response struct
 type Response struct {
 	Acknowledged bool `json:"acknowledged,omitempty"`
-	Error        struct {
+	Error struct {
 		RootCause []struct {
 			Type   string `json:"type,omitempty"`
 			Reason string `json:"reason,omitempty"`
@@ -68,7 +70,7 @@ type Response struct {
 type BulkResponse struct {
 	Took   int  `json:"took,omitempty"`
 	Errors bool `json:"errors,omitempty"`
-	Items  []struct {
+	Items []struct {
 		Index struct {
 			Index   string `json:"_index,omitempty"`
 			Type    string `json:"_type,omitempty"`
@@ -87,12 +89,12 @@ type Launch struct {
 	LaunchID   string `json:"launchId,required" validate:"required"`
 	Project    string `json:"project,required" validate:"required"`
 	LaunchName string `json:"launchName,omitempty"`
-	TestItems  []struct {
+	TestItems []struct {
 		TestItemID        string `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
-		Logs              []struct {
+		Logs []struct {
 			LogLevel int    `json:"logLevel,omitempty"`
 			Message  string `json:"message,required" validate:"required"`
 		} `json:"logs,omitempty"`
@@ -117,14 +119,14 @@ type Index struct {
 type SearchResult struct {
 	Took     int  `json:"took,omitempty"`
 	TimedOut bool `json:"timed_out,omitempty"`
-	Hits     struct {
+	Hits struct {
 		Total    int     `json:"total,omitempty"`
 		MaxScore float64 `json:"max_score,omitempty"`
-		Hits     []struct {
-			Index  string  `json:"_index,omitempty"`
-			Type   string  `json:"_type,omitempty"`
-			ID     string  `json:"_id,omitempty"`
-			Score  float64 `json:"_score,omitempty"`
+		Hits []struct {
+			Index string  `json:"_index,omitempty"`
+			Type  string  `json:"_type,omitempty"`
+			ID    string  `json:"_id,omitempty"`
+			Score float64 `json:"_score,omitempty"`
 			Source struct {
 				TestItem   string `json:"test_item,omitempty"`
 				IssueType  string `json:"issue_type,omitempty"`
@@ -139,6 +141,7 @@ type SearchResult struct {
 type client struct {
 	hosts []string
 	re    *regexp.Regexp
+	hc    *http.Client
 }
 
 // NewClient creates new ESClient
@@ -146,6 +149,7 @@ func NewClient(hosts []string) ESClient {
 	c := &client{}
 	c.hosts = hosts
 	c.re = regexp.MustCompile("\\d+")
+	c.hc = &http.Client{}
 	return c
 }
 
@@ -157,12 +161,23 @@ func (rs *Response) String() string {
 	return fmt.Sprintf("%v", string(s))
 }
 
+//Healthy returns TRUE if cluster in operational state
+func (c *client) Healthy() bool {
+	var rs map[string]interface{}
+	err := c.sendOpRequest("GET", c.buildURL("_cluster/health"), &rs, nil)
+	if nil != err {
+		return false
+	}
+	status := rs["status"]
+	return "yellow" == status || "green" == status
+}
+
 func (c *client) ListIndices() ([]Index, error) {
 	url := c.buildURL("_cat", "indices?format=json")
 
 	indices := []Index{}
 
-	err := sendOpRequest("GET", url, &indices)
+	err := c.sendOpRequest("GET", url, &indices)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +221,7 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 
 	rs := &Response{}
 
-	return rs, sendOpRequest(http.MethodPut, url, rs, body)
+	return rs, c.sendOpRequest(http.MethodPut, url, rs, body)
 }
 
 func (c *client) IndexExists(name string) (bool, error) {
@@ -224,7 +239,7 @@ func (c *client) IndexExists(name string) (bool, error) {
 func (c *client) DeleteIndex(name string) (*Response, error) {
 	url := c.buildURL(name)
 	rs := &Response{}
-	return rs, sendOpRequest(http.MethodDelete, url, rs)
+	return rs, c.sendOpRequest(http.MethodDelete, url, rs)
 }
 
 func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
@@ -270,7 +285,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 
 	url := c.buildURL("_bulk")
 
-	return rs, sendOpRequest(http.MethodPut, url, rs, bodies...)
+	return rs, c.sendOpRequest(http.MethodPut, url, rs, bodies...)
 }
 
 func (c *client) AnalyzeLogs(launches []Launch) ([]Launch, error) {
@@ -286,7 +301,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]Launch, error) {
 				query := buildQuery(lc.LaunchName, ti.UniqueID, message)
 
 				rs := &SearchResult{}
-				err := sendOpRequest(http.MethodGet, url, rs, query)
+				err := c.sendOpRequest(http.MethodGet, url, rs, query)
 				if err != nil {
 					return nil, err
 				}
@@ -406,8 +421,8 @@ func calculateScores(rs *SearchResult, k int, issueTypes map[string]float64) {
 	}
 }
 
-func sendOpRequest(method, url string, response interface{}, bodies ...interface{}) error {
-	rs, err := sendRequest(method, url, bodies...)
+func (c *client) sendOpRequest(method, url string, response interface{}, bodies ...interface{}) error {
+	rs, err := c.sendRequest(method, url, bodies...)
 	if err != nil {
 
 		return err
@@ -421,7 +436,7 @@ func sendOpRequest(method, url string, response interface{}, bodies ...interface
 	return nil
 }
 
-func sendRequest(method, url string, bodies ...interface{}) ([]byte, error) {
+func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte, error) {
 	var rdr io.Reader
 
 	nl := []byte("\n")
@@ -444,8 +459,7 @@ func sendRequest(method, url string, bodies ...interface{}) ([]byte, error) {
 	}
 	rq.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	rs, err := client.Do(rq)
+	rs, err := c.hc.Do(rq)
 	if err != nil {
 		log.Errorf("Cannot send request to ES: %s", err.Error())
 

@@ -379,12 +379,6 @@ func buildQuery(launchName, uniqueID, logMessage string) interface{} {
 				},
 				"should": []map[string]interface{}{
 					{"term": map[string]interface{}{
-						"launch_name": map[string]interface{}{
-							"value": launchName,
-							"boost": 2.0,
-						},
-					}},
-					{"term": map[string]interface{}{
 						"unique_id": map[string]interface{}{
 							"value": uniqueID,
 							"boost": 2.0,

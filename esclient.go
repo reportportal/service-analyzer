@@ -254,6 +254,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 
 				op := map[string]interface{}{
 					"index": map[string]interface{}{
+						"_id":    ti.TestItemID,
 						"_index": lc.Project,
 						"_type":  indexType,
 					},

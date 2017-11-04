@@ -35,6 +35,9 @@ import (
 //ErrorLoggingLevel is integer representation of ERROR logging level
 const ErrorLoggingLevel int = 40000
 
+//indexType is type of index in ES
+const indexType string = "log"
+
 // ESClient interface
 type ESClient interface {
 	ListIndices() ([]Index, error)
@@ -43,6 +46,7 @@ type ESClient interface {
 	DeleteIndex(name string) (*Response, error)
 
 	IndexLogs(launches []Launch) (*BulkResponse, error)
+	DeleteLogs(ci *CleanIndex) (*Response, error)
 	AnalyzeLogs(launches []Launch) ([]AnalysisResult, error)
 
 	Healthy() bool
@@ -147,6 +151,12 @@ type AnalysisResult struct {
 	TestItem     string `json:"test_item,omitempty"`
 	IssueType    string `json:"issue_type,omitempty"`
 	RelevantItem string `json:"relevant_item,omitempty"`
+}
+
+//CleanIndex is a request to clean index
+type CleanIndex struct {
+	IDs     []string `json:"ids,omitempty"`
+	Project string   `json:"project,required" validate:"required"`
 }
 
 type client struct {
@@ -256,8 +266,23 @@ func (c *client) DeleteIndex(name string) (*Response, error) {
 	return rs, c.sendOpRequest(http.MethodDelete, url, rs)
 }
 
+func (c *client) DeleteLogs(ci *CleanIndex) (*Response, error) {
+	url := c.buildURL("_bulk")
+	rs := &Response{}
+	bodies := make([]interface{}, len(ci.IDs))
+	for _, id := range ci.IDs {
+		bodies = append(bodies, map[string]interface{}{
+			"delete": map[string]interface{}{
+				"_id":    id,
+				"_index": ci.Project,
+				"_type":  indexType,
+			},
+		})
+	}
+	return rs, c.sendOpRequest(http.MethodDelete, url, rs)
+}
+
 func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
-	indexType := "log"
 
 	var bodies []interface{}
 

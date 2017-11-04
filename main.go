@@ -88,12 +88,30 @@ func main() {
 			})
 	})
 
-	srv.AddHandler(http.MethodDelete, "/_index/{id}", func(w http.ResponseWriter, rq *http.Request) error {
-		if id := chi.URLParam(rq, "id"); "" != id {
+	srv.AddHandler(http.MethodDelete, "/_index/{index_id}", func(w http.ResponseWriter, rq *http.Request) error {
+		if id := chi.URLParam(rq, "index_id"); "" != id {
 			_, err := c.DeleteIndex(id)
 			return err
 		}
-		return server.ToStatusError(http.StatusBadRequest, errors.New("Bad request, incorrect index id"))
+		return server.ToStatusError(http.StatusBadRequest, errors.New("Index ID is incorrect"))
+	})
+
+	srv.AddHandler(http.MethodPut, "/_index/{index_id}/delete", func(w http.ResponseWriter, rq *http.Request) error {
+		var ci *CleanIndex
+		err := server.ReadJSON(rq, ci)
+		if nil != err {
+			return server.ToStatusError(http.StatusBadRequest, errors.Wrap(err, "Cannot read request body"))
+		}
+		err = server.Validate(ci)
+		if nil != err {
+			return server.ToStatusError(http.StatusBadRequest, err)
+		}
+
+		rs, err := c.DeleteLogs(ci)
+		if nil != err {
+			return server.ToStatusError(http.StatusBadRequest, err)
+		}
+		return server.WriteJSON(http.StatusOK, rs, w)
 	})
 
 	srv.StartServer()

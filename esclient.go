@@ -143,8 +143,9 @@ type Hit struct {
 
 //AnalysisResult represents result of analyzes which is basically array of found matches (predicted issue type and ID of most relevant Test Item)
 type AnalysisResult struct {
-	IssueType string `json:"issue_type,omitempty"`
-	TestItem  string `json:"test_item,omitempty"`
+	TestItem     string `json:"test_item,omitempty"`
+	IssueType    string `json:"issue_type,omitempty"`
+	RelevantItem string `json:"relevant_item,omitempty"`
 }
 
 type client struct {
@@ -332,7 +333,11 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 				}
 			}
 			if "" != predictedIssueType {
-				result = append(result, AnalysisResult{TestItem: issueTypes[predictedIssueType].mrHit.Source.TestItem, IssueType: predictedIssueType})
+				result = append(result, AnalysisResult{
+					TestItem:     ti.TestItemID,
+					RelevantItem: issueTypes[predictedIssueType].mrHit.Source.TestItem,
+					IssueType:    predictedIssueType,
+				})
 			}
 
 		}

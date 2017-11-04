@@ -456,11 +456,11 @@ func TestAnalyzeLogs(t *testing.T) {
 		err := json.Unmarshal([]byte(test.analyzeRq), &launches)
 		assert.NoError(t, err)
 
-		launches, err = c.AnalyzeLogs(launches)
+		results, err := c.AnalyzeLogs(launches)
 		assert.NoError(t, err)
 
 		if test.expectedIssue != "" {
-			assert.Equal(t, test.expectedIssue, launches[0].TestItems[0].IssueType)
+			assert.Equal(t, test.expectedIssue, results[0].IssueType)
 		}
 	}
 }

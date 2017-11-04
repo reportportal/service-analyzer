@@ -43,7 +43,7 @@ type ESClient interface {
 	DeleteIndex(name string) (*Response, error)
 
 	IndexLogs(launches []Launch) (*BulkResponse, error)
-	AnalyzeLogs(launches []Launch) ([]Launch, error)
+	AnalyzeLogs(launches []Launch) ([]AnalysisResult, error)
 
 	Healthy() bool
 
@@ -122,20 +122,29 @@ type SearchResult struct {
 	Hits     struct {
 		Total    int     `json:"total,omitempty"`
 		MaxScore float64 `json:"max_score,omitempty"`
-		Hits     []struct {
-			Index  string  `json:"_index,omitempty"`
-			Type   string  `json:"_type,omitempty"`
-			ID     string  `json:"_id,omitempty"`
-			Score  float64 `json:"_score,omitempty"`
-			Source struct {
-				TestItem   string `json:"test_item,omitempty"`
-				IssueType  string `json:"issue_type,omitempty"`
-				Message    string `json:"message,omitempty"`
-				LogLevel   int    `json:"log_level,omitempty"`
-				LaunchName string `json:"launch_name,omitempty"`
-			} `json:"_source,omitempty"`
-		} `json:"hits,omitempty"`
+		Hits     []Hit   `json:"hits,omitempty"`
 	} `json:"hits,omitempty"`
+}
+
+//Hit is a single result from search index
+type Hit struct {
+	Index  string  `json:"_index,omitempty"`
+	Type   string  `json:"_type,omitempty"`
+	ID     string  `json:"_id,omitempty"`
+	Score  float64 `json:"_score,omitempty"`
+	Source struct {
+		TestItem   string `json:"test_item,omitempty"`
+		IssueType  string `json:"issue_type,omitempty"`
+		Message    string `json:"message,omitempty"`
+		LogLevel   int    `json:"log_level,omitempty"`
+		LaunchName string `json:"launch_name,omitempty"`
+	} `json:"_source,omitempty"`
+}
+
+//AnalysisResult represents result of analyzes which is basically array of found matches (predicted issue type and ID of most relevant Test Item)
+type AnalysisResult struct {
+	IssueType string `json:"issue_type,omitempty"`
+	TestItem  string `json:"test_item,omitempty"`
 }
 
 type client struct {
@@ -289,12 +298,13 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 	return rs, c.sendOpRequest(http.MethodPut, url, rs, bodies...)
 }
 
-func (c *client) AnalyzeLogs(launches []Launch) ([]Launch, error) {
+func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
+	result := []AnalysisResult{}
 	for _, lc := range launches {
 		url := c.buildURL(lc.Project, "log", "_search")
 
-		for j, ti := range lc.TestItems {
-			issueTypes := make(map[string]float64)
+		for _, ti := range lc.TestItems {
+			issueTypes := make(map[string]*score)
 
 			for _, l := range ti.Logs {
 				message := c.sanitizeText(l.Message)
@@ -315,18 +325,20 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]Launch, error) {
 			if len(issueTypes) > 0 {
 				max := 0.0
 				for k, v := range issueTypes {
-					if v > max {
-						max = v
+					if v.score > max {
+						max = v.score
 						predictedIssueType = k
 					}
 				}
 			}
+			if "" != predictedIssueType {
+				result = append(result, AnalysisResult{TestItem: issueTypes[predictedIssueType].mrHit.Source.TestItem, IssueType: predictedIssueType})
+			}
 
-			lc.TestItems[j].IssueType = predictedIssueType
 		}
 	}
 
-	return launches, nil
+	return result, nil
 }
 
 func (c *client) createIndexIfNotExists(indexName string) error {
@@ -374,7 +386,7 @@ func buildQuery(launchName, uniqueID, logMessage string) interface{} {
 							"fields":               []string{"message"},
 							"like":                 logMessage,
 							"min_doc_freq":         1,
-							"min_term_freq": 		1,
+							"min_term_freq":        1,
 							"minimum_should_match": "90%",
 						},
 					},
@@ -398,7 +410,14 @@ func buildQuery(launchName, uniqueID, logMessage string) interface{} {
 	}
 }
 
-func calculateScores(rs *SearchResult, k int, issueTypes map[string]float64) {
+//score represents total score for defect type
+//mrHit is hit with highest score found (most relevant hit)
+type score struct {
+	score float64
+	mrHit *Hit
+}
+
+func calculateScores(rs *SearchResult, k int, scores map[string]*score) {
 	if rs.Hits.Total > 0 {
 		n := len(rs.Hits.Hits)
 		if n < k {
@@ -410,16 +429,28 @@ func calculateScores(rs *SearchResult, k int, issueTypes map[string]float64) {
 		// to achieve stable prediction
 		for _, h := range hits {
 			totalScore += h.Score
+
+			//find the hit with highest score for each defect type.
+			//item from the hit will be used as most relevant of request is analysed successfully
+			if typeScore, ok := scores[h.Source.IssueType]; ok {
+				if h.Score > typeScore.mrHit.Score {
+					typeScore.mrHit = &h
+				}
+			} else {
+				scores[h.Source.IssueType] = &score{mrHit: &h}
+			}
+
 		}
 		for _, h := range hits {
-			typeScore, ok := issueTypes[h.Source.IssueType]
-			score := h.Score / totalScore
+			typeScore, ok := scores[h.Source.IssueType]
+			currScore := h.Score / totalScore
 			if ok {
-				typeScore += score
+				typeScore.score += currScore
 			} else {
-				typeScore = score
+				//should never happen
+				log.Errorf("Internal error during AA score calculation. Missed issue type: %s", h.Source.IssueType)
+				scores[h.Source.IssueType] = &score{currScore, &h}
 			}
-			issueTypes[h.Source.IssueType] = typeScore
 		}
 	}
 }

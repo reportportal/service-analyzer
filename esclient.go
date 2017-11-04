@@ -92,6 +92,7 @@ type Launch struct {
 	TestItems  []struct {
 		TestItemID        string `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`
+		IsAutoAnalyzed    string `json:"isAutoAnalyzed,required" validate:"required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs              []struct {
@@ -222,6 +223,9 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 					"unique_id": map[string]interface{}{
 						"type": "keyword",
 					},
+					"is_auto_analyzed": map[string]interface{}{
+						"type": "keyword",
+					},
 				},
 			},
 		},
@@ -275,12 +279,13 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 				message := c.sanitizeText(l.Message)
 
 				body := map[string]interface{}{
-					"launch_name": lc.LaunchName,
-					"test_item":   ti.TestItemID,
-					"unique_id":   ti.UniqueID,
-					"issue_type":  ti.IssueType,
-					"log_level":   l.LogLevel,
-					"message":     message,
+					"launch_name":      lc.LaunchName,
+					"test_item":        ti.TestItemID,
+					"unique_id":        ti.UniqueID,
+					"is_auto_analyzed": ti.IsAutoAnalyzed,
+					"issue_type":       ti.IssueType,
+					"log_level":        l.LogLevel,
+					"message":          message,
 				}
 
 				bodies = append(bodies, body)
@@ -406,6 +411,12 @@ func buildQuery(launchName, uniqueID, logMessage string) interface{} {
 					{"term": map[string]interface{}{
 						"unique_id": map[string]interface{}{
 							"value": uniqueID,
+							"boost": 2.0,
+						},
+					}},
+					{"term": map[string]interface{}{
+						"is_auto_analyzed": map[string]interface{}{
+							"value": "false",
 							"boost": 2.0,
 						},
 					}},

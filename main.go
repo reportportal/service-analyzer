@@ -24,12 +24,12 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/reportportal/commons-go.v1/commons"
 	"gopkg.in/reportportal/commons-go.v1/conf"
 	"gopkg.in/reportportal/commons-go.v1/server"
-	"github.com/go-chi/chi"
 )
 
 var log = logrus.New()
@@ -90,9 +90,9 @@ func main() {
 
 	srv.AddHandler(http.MethodDelete, "/_index/{id}", func(w http.ResponseWriter, rq *http.Request) error {
 		if id := chi.URLParam(rq, "id"); "" != id {
-		_, err := c.DeleteIndex(id)
-		return err
-	}
+			_, err := c.DeleteIndex(id)
+			return err
+		}
 		return server.ToStatusError(http.StatusBadRequest, errors.New("Bad request, incorrect index id"))
 	})
 

@@ -29,6 +29,7 @@ import (
 	"gopkg.in/reportportal/commons-go.v1/commons"
 	"gopkg.in/reportportal/commons-go.v1/conf"
 	"gopkg.in/reportportal/commons-go.v1/server"
+	"github.com/go-chi/chi"
 )
 
 var log = logrus.New()
@@ -85,6 +86,14 @@ func main() {
 			func(launches []Launch) (interface{}, error) {
 				return c.AnalyzeLogs(launches)
 			})
+	})
+
+	srv.AddHandler(http.MethodDelete, "/_index/{id}", func(w http.ResponseWriter, rq *http.Request) error {
+		if id := chi.URLParam(rq, "id"); "" != id {
+		_, err := c.DeleteIndex(id)
+		return err
+	}
+		return server.ToStatusError(http.StatusBadRequest, errors.New("Bad request, incorrect index id"))
 	})
 
 	srv.StartServer()

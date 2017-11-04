@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/reportportal/commons-go.v1/server"
 )
 
 const (
@@ -463,6 +464,14 @@ func TestAnalyzeLogs(t *testing.T) {
 			assert.Equal(t, test.expectedIssue, results[0].IssueType)
 		}
 	}
+}
+
+func TestClearIndex(t *testing.T) {
+	assert.Error(t, server.Validate(&CleanIndex{}), "Incorrect struct validation")
+	assert.NoError(t, server.Validate(&CleanIndex{
+		Project: "project",
+	}), "Incorrect struct validation")
+
 }
 
 func getFixture(filename string) string {

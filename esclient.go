@@ -96,7 +96,7 @@ type Launch struct {
 	TestItems  []struct {
 		TestItemID        string `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`
-		IsAutoAnalyzed    bool `json:"isAutoAnalyzed,required" validate:"required"`
+		IsAutoAnalyzed    bool   `json:"isAutoAnalyzed,required" validate:"required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs              []struct {

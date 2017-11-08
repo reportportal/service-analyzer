@@ -89,7 +89,7 @@ func main() {
 	})
 
 	srv.AddHandler(http.MethodDelete, "/_index/{index_id}", deleteIndexHandler(c))
-	srv.AddHandler(http.MethodPut, "/_index/{index_id}/delete", cleanIndexHandler(c))
+	srv.AddHandler(http.MethodPut, "/_index/delete", cleanIndexHandler(c))
 
 	srv.StartServer()
 }

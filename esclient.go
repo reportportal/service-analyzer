@@ -96,7 +96,7 @@ type Launch struct {
 	TestItems  []struct {
 		TestItemID        string `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`
-		IsAutoAnalyzed    string `json:"isAutoAnalyzed,required" validate:"required"`
+		IsAutoAnalyzed    bool `json:"isAutoAnalyzed,required" validate:"required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs              []struct {
@@ -270,16 +270,16 @@ func (c *client) DeleteLogs(ci *CleanIndex) (*Response, error) {
 	url := c.buildURL("_bulk")
 	rs := &Response{}
 	bodies := make([]interface{}, len(ci.IDs))
-	for _, id := range ci.IDs {
-		bodies = append(bodies, map[string]interface{}{
+	for i, id := range ci.IDs {
+		bodies[i] = map[string]interface{}{
 			"delete": map[string]interface{}{
 				"_id":    id,
 				"_index": ci.Project,
 				"_type":  indexType,
 			},
-		})
+		}
 	}
-	return rs, c.sendOpRequest(http.MethodDelete, url, rs)
+	return rs, c.sendOpRequest(http.MethodPost, url, rs, bodies...)
 }
 
 func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {

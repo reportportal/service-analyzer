@@ -21,14 +21,14 @@ along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"gopkg.in/reportportal/commons-go.v1/server"
-	"testing"
-	"net/http"
-	"net/http/httptest"
-	"github.com/go-chi/chi"
-	"github.com/stretchr/testify/assert"
 	"bytes"
 	"fmt"
+	"github.com/go-chi/chi"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/reportportal/commons-go.v1/server"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
 func TestClient_DeleteIndex(t *testing.T) {

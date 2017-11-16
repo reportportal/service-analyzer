@@ -455,7 +455,7 @@ func buildQuery(launchName, uniqueID, logMessage string) interface{} {
 //mrHit is hit with highest score found (most relevant hit)
 type score struct {
 	score float64
-	mrHit *Hit
+	mrHit Hit
 }
 
 func calculateScores(rs *SearchResult, k int, scores map[string]*score) {
@@ -475,10 +475,10 @@ func calculateScores(rs *SearchResult, k int, scores map[string]*score) {
 			//item from the hit will be used as most relevant of request is analysed successfully
 			if typeScore, ok := scores[h.Source.IssueType]; ok {
 				if h.Score > typeScore.mrHit.Score {
-					typeScore.mrHit = &h
+					typeScore.mrHit = h
 				}
 			} else {
-				scores[h.Source.IssueType] = &score{mrHit: &h}
+				scores[h.Source.IssueType] = &score{mrHit: h}
 			}
 
 		}
@@ -490,7 +490,7 @@ func calculateScores(rs *SearchResult, k int, scores map[string]*score) {
 			} else {
 				//should never happen
 				log.Errorf("Internal error during AA score calculation. Missed issue type: %s", h.Source.IssueType)
-				scores[h.Source.IssueType] = &score{currScore, &h}
+				scores[h.Source.IssueType] = &score{currScore, h}
 			}
 		}
 	}

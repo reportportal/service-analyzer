@@ -26,7 +26,7 @@ vendor:
 	$(if $(shell which glide 2>/dev/null),$(echo "Glide is already installed..."),$(shell go get github.com/Masterminds/glide))
 	glide install
 
-get-build-deps:
+get-build-deps: vendor
 	$(GO) get $(BUILD_DEPS)
 	gometalinter --install
 
@@ -60,7 +60,7 @@ clean:
 	if [ -d ${BINARY_DIR} ] ; then rm -r ${BINARY_DIR} ; fi
 	if [ -d 'build' ] ; then rm -r 'build' ; fi
 
-build-release:
+build-release: vendor get-build-deps checkstyle test
 	$(eval v := $(or $(v),$(shell releaser bump)))
 	# make sure latest version is bumped to file
 	releaser bump --version ${v}

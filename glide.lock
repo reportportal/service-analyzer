@@ -1,8 +1,8 @@
 hash: ca6c182d080ea6c348048a94ed9cb5e24ac68ed90e0451bfef4a7161989b5fe5
-updated: 2017-10-18T19:54:35.078645367+03:00
+updated: 2017-12-21T21:31:10.894818+03:00
 imports:
-- name: github.com/avarabyeu/env
-  version: 4946e6742a05770376d9415afcaf28f67fd7b0e4
+- name: github.com/caarlos0/env
+  version: 7cd7992b3bc86f920394f8de92c13900da1a46b7
 - name: github.com/cenkalti/backoff
   version: 4dc77674aceaabba2c7e3da25d4c823edfb73f99
 - name: github.com/clbanning/x2j
@@ -10,7 +10,7 @@ imports:
 - name: github.com/franela/goreq
   version: 9df54ca75ad62b6295f33ca96e16a2ca10bc137a
 - name: github.com/go-chi/chi
-  version: f7c66f685bcab06bcce78ac212c5f3553c063d19
+  version: 687d2792aedd8e8ac3bbd8592cf55b91d7ea8ce9
   subpackages:
   - middleware
 - name: github.com/go-playground/locales
@@ -20,7 +20,7 @@ imports:
 - name: github.com/go-playground/universal-translator
   version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/hashicorp/consul
-  version: 112c0603d3d6fb23ab5f15e8fdb1a761da8eaf9a
+  version: b55059fc3d0327c92c41431e57dfd2df3f956b03
   subpackages:
   - api
 - name: github.com/hashicorp/go-cleanhttp
@@ -42,7 +42,7 @@ imports:
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/sirupsen/logrus
-  version: f006c2ac4710855cf0f916dd6b77acf6b048dc6e
+  version: d682213848ed68c0a260ca37d6dd5ace8423f5ba
 - name: golang.org/x/crypto
   version: c84b36c635ad003a10f0c755dff5685ceef18c71
   subpackages:
@@ -63,9 +63,9 @@ imports:
   - token
   - types
 - name: gopkg.in/go-playground/validator.v9
-  version: a021b2ec9a8a8bb970f3f15bc42617cb520e8a64
+  version: b1f51f36f1c98cc97f777d6fc9d4b05eaa0cabb5
 - name: gopkg.in/reportportal/commons-go.v1
-  version: 46bb64cec9fb0c257d7a6ddfddf1df3617ae4cef
+  version: 9daafde45e36047f892154282993e65ec497be34
   subpackages:
   - commons
   - conf

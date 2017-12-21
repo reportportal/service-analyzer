@@ -36,7 +36,7 @@ func TestClient_DeleteIndex(t *testing.T) {
 	rr := httptest.NewRecorder()
 	mux := chi.NewMux()
 
-	mux.Handle("/", server.Handler{deleteIndexHandler(NewClient([]string{}))})
+	mux.Handle("/", server.Handler{H:deleteIndexHandler(NewClient([]string{}))})
 
 	req, _ := http.NewRequest(http.MethodDelete, "/", nil)
 	mux.ServeHTTP(rr, req)
@@ -50,7 +50,7 @@ func TestClient_CleanIndex(t *testing.T) {
 	rr := httptest.NewRecorder()
 	mux := chi.NewMux()
 
-	mux.Handle("/_index/{index_id}/delete", server.Handler{cleanIndexHandler(NewClient([]string{}))})
+	mux.Handle("/_index/{index_id}/delete", server.Handler{H: cleanIndexHandler(NewClient([]string{}))})
 
 	req, _ := http.NewRequest(http.MethodPut, "/_index/xxx/delete", bytes.NewBufferString(`{"ids" : []}`))
 	mux.ServeHTTP(rr, req)

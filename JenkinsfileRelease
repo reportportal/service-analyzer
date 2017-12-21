@@ -1,0 +1,29 @@
+#!groovy
+
+node {
+
+       load "$JENKINS_HOME/jobvars.env"
+
+    dir('src/github.com/reportportal/service-analyzer') {
+
+        stage('Checkout'){
+                checkout scm
+                sh 'git checkout master'
+                sh 'git pull'
+            }
+
+            stage ('Build Server') {
+                withEnv(["GOPATH=${JENKINS_HOME}/workspace/${JOB_NAME}", "BINTRAY_TOKEN=${BINTRAY_TOKEN}", "RELEASE_VERSION=${RELEASE_VERSION}"]) {
+                        env.PATH="${GOPATH}/bin:$PATH"
+                        sh 'go version'
+                        sh 'make release v=${RELEASE_VERSION}'
+                        sh 'file release/service-analyzer_linux_amd64'
+
+                }
+
+            }
+
+
+        }
+}
+

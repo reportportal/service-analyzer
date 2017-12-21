@@ -58,3 +58,14 @@ pushDev:
 clean:
 	if [ -d ${BINARY_DIR} ] ; then rm -r ${BINARY_DIR} ; fi
 	if [ -d 'build' ] ; then rm -r 'build' ; fi
+
+build-release: checkstyle test
+	$(eval v := $(or $(v),$(shell releaser bump)))
+	# make sure latest version is bumped to file
+	releaser bump --version ${v}
+
+	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux $(GO) build ${BUILD_INFO_LDFLAGS} -o ${RELEASE_DIR}/service-analyzer_linux_amd64 ./
+	CGO_ENABLED=0 GOARCH=amd64 GOOS=windows $(GO) build ${BUILD_INFO_LDFLAGS} -o ${RELEASE_DIR}/service-analyzer_win_amd64.exe ./
+
+release: build-release
+	releaser release --bintray.token ${BINTRAY_TOKEN}

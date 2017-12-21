@@ -5,13 +5,14 @@ BUILD_DATE = `date +%FT%T%z`
 
 GO = go
 BINARY_DIR=bin
+RELEASE_DIR=release
 
 BUILD_DEPS:= github.com/alecthomas/gometalinter
 GODIRS_NOVENDOR = $(shell go list ./... | grep -v /vendor/)
 GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 PACKAGE_COMMONS=github.com/reportportal/service-analyzer/vendor/gopkg.in/reportportal/commons-go.v1
 
-BUILD_INFO_LDFLAGS=-ldflags "-X ${PACKAGE_COMMONS}/commons.branch=${COMMIT_HASH} -X ${PACKAGE_COMMONS}/commons.buildDate=${BUILD_DATE} -X ${PACKAGE_COMMONS}/commons.version=$(VERSION)"
+BUILD_INFO_LDFLAGS=-ldflags "-extldflags '"-static"' -X ${PACKAGE_COMMONS}/commons.repo=${REPO_NAME} -X ${PACKAGE_COMMONS}/commons.branch=${COMMIT_HASH} -X ${PACKAGE_COMMONS}/commons.buildDate=${BUILD_DATE} -X ${PACKAGE_COMMONS}/commons.version=${v}"
 IMAGE_NAME=reportportal/service-analyzer$(IMAGE_POSTFIX)
 
 .PHONY: vendor test build
@@ -59,7 +60,7 @@ clean:
 	if [ -d ${BINARY_DIR} ] ; then rm -r ${BINARY_DIR} ; fi
 	if [ -d 'build' ] ; then rm -r 'build' ; fi
 
-build-release: vendor get-build-deps checkstyle test
+build-release:
 	$(eval v := $(or $(v),$(shell releaser bump)))
 	# make sure latest version is bumped to file
 	releaser bump --version ${v}

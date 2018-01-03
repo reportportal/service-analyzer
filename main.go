@@ -47,7 +47,13 @@ func main() {
 
 	defCfg := conf.EmptyConfig()
 	defCfg.Consul.Address = "registry:8500"
-	defCfg.Consul.Tags = []string{"urlprefix-/analyzer opts strip=/analyzer", "analyzer=ML", "analyzer_index=true", "analyzer_priority=10"}
+	defCfg.Consul.Tags = []string{
+		"urlprefix-/analyzer opts strip=/analyzer",
+		"traefik.frontend.rule=PathPrefixStrip:/analyzer",
+		"analyzer=ML",
+		"analyzer_index=true",
+		"analyzer_priority=10",
+	}
 	cfg := struct {
 		*conf.RpConfig
 		ESHosts []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`

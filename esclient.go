@@ -330,7 +330,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 }
 
 func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
-	result := []AnalysisResult{}
+	var result []AnalysisResult
 	for _, lc := range launches {
 		url := c.buildURL(lc.Project, "log", "_search")
 

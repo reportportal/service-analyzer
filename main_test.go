@@ -22,7 +22,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/reportportal/commons-go.v1/server"
@@ -56,6 +55,5 @@ func TestClient_CleanIndex(t *testing.T) {
 	mux.ServeHTTP(rr, req)
 
 	assert.Equal(t, rr.Code, http.StatusBadRequest)
-	fmt.Println(rr.Body.String())
 	assert.Contains(t, rr.Body.String(), "Struct validation has failed")
 }

@@ -420,7 +420,7 @@ func buildQuery(launchName, uniqueID, logMessage string) interface{} {
 						"more_like_this": map[string]interface{}{
 							"fields":               []string{"message"},
 							"like":                 logMessage,
-							"min_doc_freq":         1,
+							"min_doc_freq":         3,
 							"min_term_freq":        1,
 							"minimum_should_match": "90%",
 						},

@@ -1,14 +1,26 @@
-FROM alpine:3.7
+FROM golang:1.9.1
 
-LABEL maintainer="Andrei Varabyeu <andrei_varabyeu@epam.com>"
-LABEL version=4.0.0-BETA-1
+WORKDIR /go/src/github.com/reportportal/service-analyzer/
+ARG version
 
-ENV APP_DOWNLOAD_URL https://dl.bintray.com/epam/reportportal/4.0.0-BETA-1
+## Copy makefile and glide before to be able to cache vendor
+COPY Makefile ./
+RUN make get-build-deps
 
-ADD ${APP_DOWNLOAD_URL}/service-analyzer_linux_amd64 /service-analyzer
+COPY glide.yaml ./
+COPY glide.lock ./
 
-RUN chmod +x /service-analyzer
+RUN make vendor
 
+ENV VERSION=$version
 
-EXPOSE 8080
-ENTRYPOINT ["/service-analyzer"]
+RUN make get-build-deps
+COPY ./ ./
+RUN make build
+
+FROM alpine:latest
+ARG service
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=0 /go/src/github.com/reportportal/service-analyzer/bin/service-analyzer ./app
+CMD ["./app"]

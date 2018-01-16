@@ -47,7 +47,7 @@ build: checkstyle test
 
 # Builds the container
 build-image:
-	docker build -t "$(IMAGE_NAME)" --build-arg version=${VERSION} -f Dockerfile .
+	docker build -t "$(IMAGE_NAME)" --build-arg version=${v} -f Dockerfile .
 
 
 # Builds the container and pushes to private registry

@@ -16,7 +16,7 @@ ENV VERSION=$version
 
 RUN make get-build-deps
 COPY ./ ./
-RUN make build
+RUN make build v=${VERSION}
 
 FROM alpine:latest
 ARG service

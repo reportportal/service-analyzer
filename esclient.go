@@ -31,7 +31,7 @@ import (
 	"regexp"
 	"strings"
 	"strconv"
-	"math/big"
+	"math"
 )
 
 //ErrorLoggingLevel is integer representation of ERROR logging level
@@ -434,19 +434,19 @@ func (c *client) buildQuery(launchName, uniqueID, logMessage string) interface{}
 					{"term": map[string]interface{}{
 						"launch_name": map[string]interface{}{
 							"value": launchName,
-							"boost": fmtBoost(c.searchCfg.BoostLaunch),
+							"boost": math.Abs(c.searchCfg.BoostLaunch),
 						},
 					}},
 					{"term": map[string]interface{}{
 						"unique_id": map[string]interface{}{
 							"value": uniqueID,
-							"boost": fmtBoost(c.searchCfg.BoostUniqueID),
+							"boost": math.Abs(c.searchCfg.BoostUniqueID),
 						},
 					}},
 					{"term": map[string]interface{}{
 						"is_auto_analyzed": map[string]interface{}{
 							"value": strconv.FormatBool(c.searchCfg.BoostAA < 0),
-							"boost": fmtBoost(c.searchCfg.BoostAA),
+							"boost": math.Abs(c.searchCfg.BoostAA),
 						},
 					}},
 				},
@@ -560,14 +560,4 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 	}
 
 	return rsBody, nil
-}
-
-func fmtBoost(val float32) float64 {
-	fmt.Println(val)
-	val2, _ := big.NewFloat(float64(val)).SetPrec(4).SetMode(big.AwayFromZero).Float64()
-	if val2 < 0 {
-		val2 *= -1
-	}
-	fmt.Println(val2)
-	return val2
 }

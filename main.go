@@ -43,6 +43,7 @@ func init() {
 	log.Out = os.Stdout
 }
 
+//SearchConfig specified details of queries to elastic search
 type SearchConfig struct {
 	BoostLaunch   float64 `env:"ES_BOOST_LAUNCH" envDefault:"2.0"`
 	BoostUniqueID float64 `env:"ES_BOOST_UNIQUE_ID" envDefault:"2.0"`

@@ -43,6 +43,12 @@ func init() {
 	log.Out = os.Stdout
 }
 
+type SearchConfig struct {
+	BoostLaunch   float32 `env:"ES_BOOST_LAUNCH" envDefault:"2.2"`
+	BoostUniqueID float32 `env:"ES_BOOST_UNIQUE_ID" envDefault:"2.2"`
+	BoostAA       float32 `env:"ES_BOOST_UNIQUE_ID" envDefault:"-2.2"`
+}
+
 func main() {
 
 	defCfg := conf.EmptyConfig()
@@ -56,9 +62,11 @@ func main() {
 	}
 	cfg := struct {
 		*conf.RpConfig
+		*SearchConfig
 		ESHosts []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
 	}{
-		RpConfig: defCfg,
+		RpConfig:     defCfg,
+		SearchConfig: &SearchConfig{},
 	}
 
 	err := conf.LoadConfig(&cfg)
@@ -72,7 +80,7 @@ func main() {
 
 	srv := server.New(cfg.RpConfig, info)
 
-	c := NewClient(cfg.ESHosts)
+	c := NewClient(cfg.ESHosts, cfg.SearchConfig)
 
 	srv.AddHealthCheckFunc(func() error {
 		if !c.Healthy() {

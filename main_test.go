@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"gopkg.in/reportportal/commons-go.v1/conf"
 )
 
 func TestClient_DeleteIndex(t *testing.T) {
@@ -35,7 +36,7 @@ func TestClient_DeleteIndex(t *testing.T) {
 	rr := httptest.NewRecorder()
 	mux := chi.NewMux()
 
-	mux.Handle("/", server.Handler{H:deleteIndexHandler(NewClient([]string{}))})
+	mux.Handle("/", server.Handler{H: deleteIndexHandler(NewClient([]string{}, defaultSearchConfig()))})
 
 	req, _ := http.NewRequest(http.MethodDelete, "/", nil)
 	mux.ServeHTTP(rr, req)
@@ -49,11 +50,17 @@ func TestClient_CleanIndex(t *testing.T) {
 	rr := httptest.NewRecorder()
 	mux := chi.NewMux()
 
-	mux.Handle("/_index/{index_id}/delete", server.Handler{H: cleanIndexHandler(NewClient([]string{}))})
+	mux.Handle("/_index/{index_id}/delete", server.Handler{H: cleanIndexHandler(NewClient([]string{}, defaultSearchConfig()))})
 
 	req, _ := http.NewRequest(http.MethodPut, "/_index/xxx/delete", bytes.NewBufferString(`{"ids" : []}`))
 	mux.ServeHTTP(rr, req)
 
 	assert.Equal(t, rr.Code, http.StatusBadRequest)
 	assert.Contains(t, rr.Body.String(), "Struct validation has failed")
+}
+
+func defaultSearchConfig() *SearchConfig {
+	sc := &SearchConfig{}
+	conf.LoadConfig(sc)
+	return sc
 }

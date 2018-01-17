@@ -30,6 +30,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"strconv"
+	"math/big"
 )
 
 //ErrorLoggingLevel is integer representation of ERROR logging level
@@ -59,7 +61,7 @@ type ESClient interface {
 // Response struct
 type Response struct {
 	Acknowledged bool `json:"acknowledged,omitempty"`
-	Error        struct {
+	Error struct {
 		RootCause []struct {
 			Type   string `json:"type,omitempty"`
 			Reason string `json:"reason,omitempty"`
@@ -74,7 +76,7 @@ type Response struct {
 type BulkResponse struct {
 	Took   int  `json:"took,omitempty"`
 	Errors bool `json:"errors,omitempty"`
-	Items  []struct {
+	Items []struct {
 		Index struct {
 			Index   string `json:"_index,omitempty"`
 			Type    string `json:"_type,omitempty"`
@@ -93,13 +95,13 @@ type Launch struct {
 	LaunchID   string `json:"launchId,required" validate:"required"`
 	Project    string `json:"project,required" validate:"required"`
 	LaunchName string `json:"launchName,omitempty"`
-	TestItems  []struct {
+	TestItems []struct {
 		TestItemID        string `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`
 		IsAutoAnalyzed    bool   `json:"isAutoAnalyzed,required" validate:"required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
-		Logs              []struct {
+		Logs []struct {
 			LogLevel int    `json:"logLevel,omitempty"`
 			Message  string `json:"message,required" validate:"required"`
 		} `json:"logs,omitempty"`
@@ -124,7 +126,7 @@ type Index struct {
 type SearchResult struct {
 	Took     int  `json:"took,omitempty"`
 	TimedOut bool `json:"timed_out,omitempty"`
-	Hits     struct {
+	Hits struct {
 		Total    int     `json:"total,omitempty"`
 		MaxScore float64 `json:"max_score,omitempty"`
 		Hits     []Hit   `json:"hits,omitempty"`
@@ -133,10 +135,10 @@ type SearchResult struct {
 
 //Hit is a single result from search index
 type Hit struct {
-	Index  string  `json:"_index,omitempty"`
-	Type   string  `json:"_type,omitempty"`
-	ID     string  `json:"_id,omitempty"`
-	Score  float64 `json:"_score,omitempty"`
+	Index string  `json:"_index,omitempty"`
+	Type  string  `json:"_type,omitempty"`
+	ID    string  `json:"_id,omitempty"`
+	Score float64 `json:"_score,omitempty"`
 	Source struct {
 		TestItem   string `json:"test_item,omitempty"`
 		IssueType  string `json:"issue_type,omitempty"`
@@ -160,18 +162,20 @@ type CleanIndex struct {
 }
 
 type client struct {
-	hosts []string
-	re    *regexp.Regexp
-	hc    *http.Client
+	hosts     []string
+	re        *regexp.Regexp
+	hc        *http.Client
+	searchCfg *SearchConfig
 }
 
 // NewClient creates new ESClient
-func NewClient(hosts []string) ESClient {
-	c := &client{}
-	c.hosts = hosts
-	c.re = regexp.MustCompile("\\d+")
-	c.hc = &http.Client{}
-	return c
+func NewClient(hosts []string, searchCfg *SearchConfig) ESClient {
+	return &client{
+		hosts:     hosts,
+		searchCfg: searchCfg,
+		re:        regexp.MustCompile("\\d+"),
+		hc:        &http.Client{},
+	}
 }
 
 func (rs *Response) String() string {
@@ -340,7 +344,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 			for _, l := range ti.Logs {
 				message := c.sanitizeText(l.Message)
 
-				query := buildQuery(lc.LaunchName, ti.UniqueID, message)
+				query := c.buildQuery(lc.LaunchName, ti.UniqueID, message)
 
 				rs := &SearchResult{}
 				err := c.sendOpRequest(http.MethodGet, url, rs, query)
@@ -395,7 +399,7 @@ func (c *client) buildURL(pathElements ...string) string {
 	return c.hosts[0] + "/" + strings.Join(pathElements, "/")
 }
 
-func buildQuery(launchName, uniqueID, logMessage string) interface{} {
+func (c *client) buildQuery(launchName, uniqueID, logMessage string) interface{} {
 	return map[string]interface{}{
 		"size": 10,
 		"query": map[string]interface{}{
@@ -430,19 +434,19 @@ func buildQuery(launchName, uniqueID, logMessage string) interface{} {
 					{"term": map[string]interface{}{
 						"launch_name": map[string]interface{}{
 							"value": launchName,
-							"boost": 2.0,
+							"boost": fmtBoost(c.searchCfg.BoostLaunch),
 						},
 					}},
 					{"term": map[string]interface{}{
 						"unique_id": map[string]interface{}{
 							"value": uniqueID,
-							"boost": 2.0,
+							"boost": fmtBoost(c.searchCfg.BoostUniqueID),
 						},
 					}},
 					{"term": map[string]interface{}{
 						"is_auto_analyzed": map[string]interface{}{
-							"value": "false",
-							"boost": 2.0,
+							"value": strconv.FormatBool(c.searchCfg.BoostAA < 0),
+							"boost": fmtBoost(c.searchCfg.BoostAA),
 						},
 					}},
 				},
@@ -556,4 +560,14 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 	}
 
 	return rsBody, nil
+}
+
+func fmtBoost(val float32) float64 {
+	fmt.Println(val)
+	val2, _ := big.NewFloat(float64(val)).SetPrec(4).SetMode(big.AwayFromZero).Float64()
+	if val2 < 0 {
+		val2 *= -1
+	}
+	fmt.Println(val2)
+	return val2
 }

@@ -47,7 +47,7 @@ func init() {
 type SearchConfig struct {
 	BoostLaunch   float64 `env:"ES_BOOST_LAUNCH" envDefault:"2.0"`
 	BoostUniqueID float64 `env:"ES_BOOST_UNIQUE_ID" envDefault:"2.0"`
-	BoostAA       float64 `env:"ES_BOOST_UNIQUE_ID" envDefault:"2.0"`
+	BoostAA       float64 `env:"ES_BOOST_AA" envDefault:"2.0"`
 }
 
 func main() {

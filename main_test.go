@@ -24,11 +24,11 @@ import (
 	"bytes"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/reportportal/commons-go.v1/conf"
 	"gopkg.in/reportportal/commons-go.v1/server"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"gopkg.in/reportportal/commons-go.v1/conf"
 )
 
 func TestClient_DeleteIndex(t *testing.T) {

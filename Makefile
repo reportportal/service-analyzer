@@ -46,6 +46,10 @@ build: checkstyle test
 	CGO_ENABLED=0 GOOS=linux $(GO) build ${BUILD_INFO_LDFLAGS} -o ${BINARY_DIR}/service-analyzer ./
 
 # Builds the container
+build-image-dev:
+	docker build -f DockerfileDev -t "$(IMAGE_NAME)" --build-arg version=${v} -f Dockerfile .
+
+# Builds the container
 build-image:
 	docker build -t "$(IMAGE_NAME)" --build-arg version=${v} -f Dockerfile .
 

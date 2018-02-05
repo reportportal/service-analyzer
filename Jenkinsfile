@@ -16,7 +16,7 @@ node {
             withEnv(["IMAGE_POSTFIX=-dev", "BUILD_NUMBER=${env.BUILD_NUMBER}"]) {
                 docker.withServer("$DOCKER_HOST") {
                     stage('Build Docker Image') {
-                        sh 'make build-image v=`cat VERSION`-$BUILD_NUMBER'
+                        sh 'make build-image-dev v=`cat VERSION`-$BUILD_NUMBER'
                     }
 
                     stage('Deploy container') {

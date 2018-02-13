@@ -1,4 +1,4 @@
-{"index":{"_id":"0002","_index":"idx2","_type":"log"}}
+{"index":{"_id":"1","_index":"idx2","_type":"log"}}
 {"is_auto_analyzed":false,"issue_type":"TI001","launch_name":"Launch with test items with logs","log_level":40000,"message":"Message ","test_item":"0002","unique_id":"unique1"}
-{"index":{"_id":"0002","_index":"idx2","_type":"log"}}
+{"index":{"_id":"2","_index":"idx2","_type":"log"}}
 {"is_auto_analyzed":false,"issue_type":"TI001","launch_name":"Launch with test items with logs","log_level":40000,"message":"Message ","test_item":"0002","unique_id":"unique1"}

@@ -102,6 +102,7 @@ type Launch struct {
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs              []struct {
+			LogID    string `json:"log_id,required" validate:"required"`
 			LogLevel int    `json:"logLevel,omitempty"`
 			Message  string `json:"message,required" validate:"required"`
 		} `json:"logs,omitempty"`
@@ -297,7 +298,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 
 				op := map[string]interface{}{
 					"index": map[string]interface{}{
-						"_id":    ti.TestItemID,
+						"_id":    l.LogID,
 						"_index": lc.Project,
 						"_type":  indexType,
 					},

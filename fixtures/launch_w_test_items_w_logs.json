@@ -9,10 +9,12 @@
             "issueType": "TI001",
             "logs": [
                 {
+                    "log_id" : "1",
                     "logLevel": 40000,
                     "message": "Message 1"
                 },
                 {
+                    "log_id" : "2",
                     "logLevel": 40000,
                     "message": "Message 2"
                 }

@@ -1,5 +1,5 @@
 hash: ca6c182d080ea6c348048a94ed9cb5e24ac68ed90e0451bfef4a7161989b5fe5
-updated: 2017-12-21T21:31:10.894818+03:00
+updated: 2018-02-20T16:05:21.863056+03:00
 imports:
 - name: github.com/caarlos0/env
   version: 7cd7992b3bc86f920394f8de92c13900da1a46b7
@@ -10,7 +10,7 @@ imports:
 - name: github.com/franela/goreq
   version: 9df54ca75ad62b6295f33ca96e16a2ca10bc137a
 - name: github.com/go-chi/chi
-  version: 687d2792aedd8e8ac3bbd8592cf55b91d7ea8ce9
+  version: e83ac2304db3c50cf03d96a2fcd39009d458bc35
   subpackages:
   - middleware
 - name: github.com/go-playground/locales
@@ -20,7 +20,7 @@ imports:
 - name: github.com/go-playground/universal-translator
   version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/hashicorp/consul
-  version: b55059fc3d0327c92c41431e57dfd2df3f956b03
+  version: 9a494b5fb9c86180a5702e29c485df1507a47198
   subpackages:
   - api
 - name: github.com/hashicorp/go-cleanhttp
@@ -63,7 +63,7 @@ imports:
   - token
   - types
 - name: gopkg.in/go-playground/validator.v9
-  version: b1f51f36f1c98cc97f777d6fc9d4b05eaa0cabb5
+  version: 535f85221eb67ab842438877b22cac6274380cf2
 - name: gopkg.in/reportportal/commons-go.v1
   version: 9daafde45e36047f892154282993e65ec497be34
   subpackages:

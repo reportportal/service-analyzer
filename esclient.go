@@ -61,7 +61,7 @@ type ESClient interface {
 // Response struct
 type Response struct {
 	Acknowledged bool `json:"acknowledged,omitempty"`
-	Error        struct {
+	Error struct {
 		RootCause []struct {
 			Type   string `json:"type,omitempty"`
 			Reason string `json:"reason,omitempty"`
@@ -76,7 +76,7 @@ type Response struct {
 type BulkResponse struct {
 	Took   int  `json:"took,omitempty"`
 	Errors bool `json:"errors,omitempty"`
-	Items  []struct {
+	Items []struct {
 		Index struct {
 			Index   string `json:"_index,omitempty"`
 			Type    string `json:"_type,omitempty"`
@@ -92,16 +92,17 @@ type BulkResponse struct {
 
 // Launch struct
 type Launch struct {
-	LaunchID   string `json:"launchId,required" validate:"required"`
-	Project    string `json:"project,required" validate:"required"`
-	LaunchName string `json:"launchName,omitempty"`
-	TestItems  []struct {
+	LaunchID   string     `json:"launchId,required" validate:"required"`
+	Project    string     `json:"project,required" validate:"required"`
+	LaunchName string     `json:"launchName,omitempty"`
+	Mode       SearchMode `json:"analyzeMode,omitempty"`
+	TestItems []struct {
 		TestItemID        string `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`
 		IsAutoAnalyzed    bool   `json:"isAutoAnalyzed,required" validate:"required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
-		Logs              []struct {
+		Logs []struct {
 			LogID    string `json:"log_id,required" validate:"required"`
 			LogLevel int    `json:"logLevel,omitempty"`
 			Message  string `json:"message,required" validate:"required"`
@@ -127,7 +128,7 @@ type Index struct {
 type SearchResult struct {
 	Took     int  `json:"took,omitempty"`
 	TimedOut bool `json:"timed_out,omitempty"`
-	Hits     struct {
+	Hits struct {
 		Total    int     `json:"total,omitempty"`
 		MaxScore float64 `json:"max_score,omitempty"`
 		Hits     []Hit   `json:"hits,omitempty"`
@@ -136,10 +137,10 @@ type SearchResult struct {
 
 //Hit is a single result from search index
 type Hit struct {
-	Index  string  `json:"_index,omitempty"`
-	Type   string  `json:"_type,omitempty"`
-	ID     string  `json:"_id,omitempty"`
-	Score  float64 `json:"_score,omitempty"`
+	Index string  `json:"_index,omitempty"`
+	Type  string  `json:"_type,omitempty"`
+	ID    string  `json:"_id,omitempty"`
+	Score float64 `json:"_score,omitempty"`
 	Source struct {
 		TestItem   string `json:"test_item,omitempty"`
 		IssueType  string `json:"issue_type,omitempty"`
@@ -345,7 +346,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 			for _, l := range ti.Logs {
 				message := c.sanitizeText(l.Message)
 
-				query := c.buildQuery(lc.LaunchName, ti.UniqueID, message)
+				query := c.buildQuery(lc.Mode, lc.LaunchName, ti.UniqueID, message)
 
 				rs := &SearchResult{}
 				err := c.sendOpRequest(http.MethodGet, url, rs, query)
@@ -400,60 +401,49 @@ func (c *client) buildURL(pathElements ...string) string {
 	return c.hosts[0] + "/" + strings.Join(pathElements, "/")
 }
 
-func (c *client) buildQuery(launchName, uniqueID, logMessage string) interface{} {
-	return map[string]interface{}{
-		"size": 10,
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"must_not": map[string]interface{}{
-					"wildcard": map[string]interface{}{
-						"issue_type": "TI*",
+func (c *client) buildQuery(mode SearchMode, launchName, uniqueID, logMessage string) interface{} {
+	return EsQueryRQ{
+		Size: 10,
+		Query: &EsQuery{
+			Bool: &BoolCondition{
+				MustNot: &Condition{
+					Wildcard: map[string]interface{}{"issue_type": "TI*"},
+				},
+				Must: []Condition{
+					{
+						Term: map[string]TermCondition{
+							"log_level": {
+								Value: ErrorLoggingLevel,
+							},
+						}},
+					{
+						Exists: &ExistsCondition{
+							Field: "issue_type",
+						},
+					},
+					{
+						MoreLikeThis: &MoreLikeThisCondition{
+							Fields:         []string{"message"},
+							Like:           logMessage,
+							MinDocFreq:     c.searchCfg.MinDocFreq,
+							MinTermFreq:    c.searchCfg.MinTermFreq,
+							MinShouldMatch: c.searchCfg.MinShouldMatch,
+						},
 					},
 				},
-				"must": []interface{}{
-					map[string]interface{}{
-						"term": map[string]interface{}{
-							"log_level": ErrorLoggingLevel,
-						},
+				Should: []Condition{
+					{
+						Term: map[string]TermCondition{"launch_name": {launchName, NewBoost(math.Abs(c.searchCfg.BoostLaunch))}},
 					},
-					map[string]interface{}{
-						"exists": map[string]interface{}{
-							"field": "issue_type",
-						},
+					{
+						Term: map[string]TermCondition{"unique_id": {uniqueID, NewBoost(math.Abs(c.searchCfg.BoostUniqueID))}},
 					},
-					map[string]interface{}{
-						"more_like_this": map[string]interface{}{
-							"fields":               []string{"message"},
-							"like":                 logMessage,
-							"min_doc_freq":         c.searchCfg.MinDocFreq,
-							"min_term_freq":        c.searchCfg.MinTermFreq,
-							"minimum_should_match": c.searchCfg.MinShouldMatch,
-						},
+					{
+						Term: map[string]TermCondition{"is_auto_analyzed": {strconv.FormatBool(c.searchCfg.BoostAA < 0), NewBoost(math.Abs(c.searchCfg.BoostAA))}},
 					},
-				},
-				"should": []map[string]interface{}{
-					{"term": map[string]interface{}{
-						"launch_name": map[string]interface{}{
-							"value": launchName,
-							"boost": math.Abs(c.searchCfg.BoostLaunch),
-						},
-					}},
-					{"term": map[string]interface{}{
-						"unique_id": map[string]interface{}{
-							"value": uniqueID,
-							"boost": math.Abs(c.searchCfg.BoostUniqueID),
-						},
-					}},
-					{"term": map[string]interface{}{
-						"is_auto_analyzed": map[string]interface{}{
-							"value": strconv.FormatBool(c.searchCfg.BoostAA < 0),
-							"boost": math.Abs(c.searchCfg.BoostAA),
-						},
-					}},
 				},
 			},
-		},
-	}
+		}}
 }
 
 //score represents total score for defect type

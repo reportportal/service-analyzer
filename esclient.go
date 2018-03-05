@@ -552,7 +552,7 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 		return nil, errors.Wrap(err, "Cannot read ES response")
 	}
 
-	log.Infof("ES responded with %d status code", rs.StatusCode)
+	log.Debugf("ES responded with %d status code", rs.StatusCode)
 	if rs.StatusCode > http.StatusCreated && rs.StatusCode < http.StatusNotFound {
 		body := string(rsBody)
 		log.Errorf("ES communication error. Status code %d, Body %s", rs.StatusCode, body)

@@ -41,6 +41,7 @@ func init() {
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example
 	log.Out = os.Stdout
+	log.SetLevel(logrus.DebugLevel)
 }
 
 //SearchConfig specified details of queries to elastic search

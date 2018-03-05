@@ -95,7 +95,7 @@ type Launch struct {
 	LaunchID   string     `json:"launchId,required" validate:"required"`
 	Project    string     `json:"project,required" validate:"required"`
 	LaunchName string     `json:"launchName,omitempty"`
-	Mode       SearchMode `json:"analyzeMode,omitempty"`
+	Mode       SearchMode `json:"analyzeMode"`
 	TestItems  []struct {
 		TestItemID        string `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`

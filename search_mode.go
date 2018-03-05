@@ -1,6 +1,9 @@
 package main
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"github.com/pkg/errors"
+)
 
 var enums []string
 
@@ -8,7 +11,7 @@ var enums []string
 type SearchMode int
 
 func (sm SearchMode) String() string {
-	return enums[int(sm-1)]
+	return enums[int(sm)]
 }
 
 //MarshalJSON serializes to JSON
@@ -23,20 +26,24 @@ func (sm *SearchMode) UnmarshalJSON(data []byte) error {
 	if nil != err {
 		return err
 	}
-	*sm = FromString(str)
+	val := FromString(str)
+	if -1 == val {
+		return errors.Errorf("SearchMode %s not found", str)
+	}
+	*sm = val
 	return nil
 }
 
 func ciota(s string) SearchMode {
 	enums = append(enums, s)
-	return SearchMode(len(enums))
+	return SearchMode(len(enums) - 1)
 }
 
 //FromString creates search mode from string
 func FromString(s string) SearchMode {
 	for i, e := range enums {
 		if s == e {
-			return SearchMode(i + 1)
+			return SearchMode(i)
 		}
 	}
 	return -1

@@ -1,5 +1,5 @@
-hash: ca6c182d080ea6c348048a94ed9cb5e24ac68ed90e0451bfef4a7161989b5fe5
-updated: 2018-02-20T16:05:21.863056+03:00
+hash: e305ee6090ad58e315558e2ab99adfde0f622a7ec529c41d16d7e410b4b5eb53
+updated: 2018-03-03T12:24:54.870209+03:00
 imports:
 - name: github.com/caarlos0/env
   version: 7cd7992b3bc86f920394f8de92c13900da1a46b7
@@ -37,6 +37,12 @@ imports:
   version: f01e44c2fdbf755201344b5b7917f974a4badd13
 - name: github.com/mitchellh/go-homedir
   version: b8bc1bf767474819792c23f32d8286a45736f1c6
+- name: github.com/onsi/ginkgo
+  version: 9eda700730cba42af70d53180f9dcce9266bc2bc
+  subpackages:
+  - ginkgo
+- name: github.com/onsi/gomega
+  version: 003f63b7f4cff3fc95357005358af2de0f5fe152
 - name: github.com/op/go-logging
   version: d2e44aa77b7195c0ef782189985dd8550e22e4de
 - name: github.com/pkg/errors
@@ -63,7 +69,7 @@ imports:
   - token
   - types
 - name: gopkg.in/go-playground/validator.v9
-  version: 535f85221eb67ab842438877b22cac6274380cf2
+  version: 150fe5b6a4ccc9cd6ffdbf5d184b67fbea75efcc
 - name: gopkg.in/reportportal/commons-go.v1
   version: 9daafde45e36047f892154282993e65ec497be34
   subpackages:

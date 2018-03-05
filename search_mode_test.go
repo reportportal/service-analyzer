@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"testing"
@@ -17,5 +18,32 @@ var _ = Describe("SearchType", func() {
 	})
 	It("should parse from string correctly", func() {
 		Expect(FromString("LAUNCH_NAME")).To(BeEquivalentTo(SearchModeLaunchName))
+	})
+
+	It("should deserialize correctly from string correctly", func() {
+		data := `[
+  {
+    "analyzeMode": "ALL",                   
+    "launchId": "5a0d84a8eff46f62cfd9cbe4",                   
+    "launchName": "test-results",  
+    "project": "analyzer",                       
+    "testItems": []
+  }
+]`
+		var launches []Launch
+		err := json.Unmarshal([]byte(data), &launches)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(launches[0].Mode).Should(BeEquivalentTo(SearchModeAll))
+	})
+
+	It("should serialize correctly from string correctly", func() {
+		data := `[{"launchId":"","project":"","launchName":"name","analyzeMode":"ALL"}]`
+		launches := []Launch{{
+			Mode:       SearchModeAll,
+			LaunchName: "name",
+		}}
+		d, err := json.Marshal(launches)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(string(d)).Should(BeEquivalentTo(data))
 	})
 })

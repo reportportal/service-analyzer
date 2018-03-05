@@ -402,7 +402,7 @@ func (c *client) buildURL(pathElements ...string) string {
 }
 
 func (c *client) buildQuery(mode SearchMode, launchName, uniqueID, logMessage string) interface{} {
-	return EsQueryRQ{
+	q := EsQueryRQ{
 		Size: 10,
 		Query: &EsQuery{
 			Bool: &BoolCondition{
@@ -433,9 +433,6 @@ func (c *client) buildQuery(mode SearchMode, launchName, uniqueID, logMessage st
 				},
 				Should: []Condition{
 					{
-						Term: map[string]TermCondition{"launch_name": {launchName, NewBoost(math.Abs(c.searchCfg.BoostLaunch))}},
-					},
-					{
 						Term: map[string]TermCondition{"unique_id": {uniqueID, NewBoost(math.Abs(c.searchCfg.BoostUniqueID))}},
 					},
 					{
@@ -444,6 +441,18 @@ func (c *client) buildQuery(mode SearchMode, launchName, uniqueID, logMessage st
 				},
 			},
 		}}
+	switch mode {
+	case SearchModeAll:
+		q.Query.Bool.Should = append(q.Query.Bool.Should, Condition{
+			Term: map[string]TermCondition{"launch_name": {launchName, NewBoost(math.Abs(c.searchCfg.BoostLaunch))}},
+		})
+	case SearchModeLaunchName:
+		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
+			Term: map[string]TermCondition{"launch_name": {Value: launchName}},
+		})
+	}
+
+	return q
 }
 
 //score represents total score for defect type

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
 )
 
 var enums []string
@@ -27,9 +26,6 @@ func (sm *SearchMode) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	val := FromString(str)
-	if -1 == val {
-		return errors.Errorf("SearchMode %s not found", str)
-	}
 	*sm = val
 	return nil
 }
@@ -46,8 +42,11 @@ func FromString(s string) SearchMode {
 			return SearchMode(i)
 		}
 	}
-	return -1
+	return SearchModeNotFound
 }
+
+//SearchModeNotFound is a special case when type is not provided
+const SearchModeNotFound = -1
 
 //Search mode types
 var (

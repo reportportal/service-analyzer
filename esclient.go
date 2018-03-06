@@ -442,7 +442,7 @@ func (c *client) buildQuery(mode SearchMode, launchName, uniqueID, logMessage st
 			},
 		}}
 	switch mode {
-	case SearchModeAll:
+	case SearchModeAll, SearchModeNotFound:
 		q.Query.Bool.Should = append(q.Query.Bool.Should, Condition{
 			Term: map[string]TermCondition{"launch_name": {launchName, NewBoost(math.Abs(c.searchCfg.BoostLaunch))}},
 		})

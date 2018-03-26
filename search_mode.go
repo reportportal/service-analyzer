@@ -50,6 +50,7 @@ const SearchModeNotFound = -1
 
 //Search mode types
 var (
-	SearchModeAll        = ciota("ALL")
-	SearchModeLaunchName = ciota("LAUNCH_NAME")
+	SearchModeAll           = ciota("ALL")
+	SearchModeLaunchName    = ciota("LAUNCH_NAME")
+	SearchModeCurrentLaunch = ciota("CURRENT_LAUNCH")
 )

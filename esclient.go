@@ -422,15 +422,6 @@ func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interfac
 							Field: "issue_type",
 						},
 					},
-					{
-						MoreLikeThis: &MoreLikeThisCondition{
-							Fields:         []string{"message"},
-							Like:           logMessage,
-							MinDocFreq:     c.searchCfg.MinDocFreq,
-							MinTermFreq:    c.searchCfg.MinTermFreq,
-							MinShouldMatch: c.searchCfg.MinShouldMatch,
-						},
-					},
 				},
 				Should: []Condition{
 					{
@@ -447,17 +438,32 @@ func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interfac
 		q.Query.Bool.Should = append(q.Query.Bool.Should, Condition{
 			Term: map[string]TermCondition{"launch_name": {launch.LaunchName, NewBoost(math.Abs(c.searchCfg.BoostLaunch))}},
 		})
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(c.searchCfg.MinDocFreq, logMessage))
 	case SearchModeLaunchName:
 		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
 			Term: map[string]TermCondition{"launch_name": {Value: launch.LaunchName}},
 		})
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(c.searchCfg.MinDocFreq, logMessage))
 	case SearchModeCurrentLaunch:
 		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
 			Term: map[string]TermCondition{"launch_id": {Value: launch.LaunchID}},
 		})
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(float64(1), logMessage))
 	}
 
 	return q
+}
+
+func (c *client) buildMoreLikeThis(minDocFreq float64, logMessage string) Condition {
+	return Condition{
+		MoreLikeThis: &MoreLikeThisCondition{
+			Fields:         []string{"message"},
+			Like:           logMessage,
+			MinDocFreq:     minDocFreq,
+			MinTermFreq:    c.searchCfg.MinTermFreq,
+			MinShouldMatch: c.searchCfg.MinShouldMatch,
+		},
+	}
 }
 
 //score represents total score for defect type

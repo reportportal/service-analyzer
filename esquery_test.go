@@ -20,7 +20,8 @@ var _ = Describe("ES Query Struct", func() {
 		}
 
 		c := &client{searchCfg: cfg}
-		q1Struct := c.buildQuery(SearchModeAll, "mylaynch", "unique", "hello world")
+		launch := Launch{Mode: SearchModeAll, LaunchID:"123", LaunchName:"Launch name"}
+		q1Struct := c.buildQuery(launch, "unique", "hello world")
 		q2Struct := buildDemoQuery(cfg, SearchModeAll, "mylaynch", "unique", "hello world")
 
 		q1B, _ := json.Marshal(q1Struct)

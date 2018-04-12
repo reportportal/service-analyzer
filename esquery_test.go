@@ -48,9 +48,9 @@ func buildDemoQuery(searchCfg *SearchConfig, mode SearchMode, launchName, unique
 				},
 				"must": []interface{}{
 					map[string]interface{}{
-						"term": map[string]interface{}{
+						"range": map[string]interface{}{
 							"log_level": map[string]interface{}{
-								"value": ErrorLoggingLevel,
+								"gte": ErrorLoggingLevel,
 							},
 						},
 					},

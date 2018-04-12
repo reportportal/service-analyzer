@@ -20,10 +20,11 @@ type BoolCondition struct {
 
 //Condition is a condition model
 type Condition struct {
-	Wildcard     map[string]interface{}   `json:"wildcard,omitempty"`
-	Term         map[string]TermCondition `json:"term,omitempty"`
-	Exists       *ExistsCondition         `json:"exists,omitempty"`
-	MoreLikeThis *MoreLikeThisCondition   `json:"more_like_this,omitempty"`
+	Wildcard     map[string]interface{}    `json:"wildcard,omitempty"`
+	Term         map[string]TermCondition  `json:"term,omitempty"`
+	Range        map[string]interface{}    `json:"range,omitempty"`
+	Exists       *ExistsCondition          `json:"exists,omitempty"`
+	MoreLikeThis *MoreLikeThisCondition    `json:"more_like_this,omitempty"`
 }
 
 //ExistsCondition is a exists condition model
@@ -44,6 +45,11 @@ type MoreLikeThisCondition struct {
 type TermCondition struct {
 	Value interface{} `json:"value,omitempty"`
 	Boost *Boost      `json:"boost,omitempty"`
+}
+
+//RangeCondition is a term condition model
+type RangeCondition struct {
+	Value map[string]interface{} `json:"value,omitempty"`
 }
 
 //Boost is a term boost model

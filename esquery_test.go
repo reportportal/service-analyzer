@@ -20,7 +20,7 @@ var _ = Describe("ES Query Struct", func() {
 		}
 
 		c := &client{searchCfg: cfg}
-		launch := Launch{Mode: SearchModeAll, LaunchID:"123", LaunchName:"Launch name"}
+		launch := Launch{Mode: SearchModeAll, LaunchID: "123", LaunchName: "Launch name"}
 		q1Struct := c.buildQuery(launch, "unique", "hello world")
 		q2Struct := buildDemoQuery(cfg, SearchModeAll, "mylaynch", "unique", "hello world")
 

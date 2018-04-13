@@ -260,7 +260,7 @@ func (c *client) IndexExists(name string) (bool, error) {
 	httpClient := &http.Client{}
 	rs, err := httpClient.Head(url)
 	if err != nil {
-		return false, err
+		return false, errors.WithStack(err)
 	}
 
 	return rs.StatusCode == http.StatusOK, nil
@@ -353,7 +353,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 				rs := &SearchResult{}
 				err := c.sendOpRequest(http.MethodGet, url, rs, query)
 				if err != nil {
-					return nil, err
+					return nil, errors.WithStack(err)
 				}
 
 				calculateScores(rs, 10, issueTypes)
@@ -512,8 +512,7 @@ func calculateScores(rs *SearchResult, k int, scores map[string]*score) {
 func (c *client) sendOpRequest(method, url string, response interface{}, bodies ...interface{}) error {
 	rs, err := c.sendRequest(method, url, bodies...)
 	if err != nil {
-
-		return err
+		return errors.WithStack(err)
 	}
 
 	err = json.Unmarshal(rs, &response)
@@ -533,7 +532,7 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 		for _, body := range bodies {
 			rqBody, err := json.Marshal(body)
 			if err != nil {
-				return nil, err
+				return nil, errors.WithStack(err)
 			}
 			buff.Write(rqBody)
 			buff.Write(nl)

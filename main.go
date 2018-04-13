@@ -132,12 +132,12 @@ func cleanIndexHandler(c ESClient) func(w http.ResponseWriter, rq *http.Request)
 		}
 		err = server.Validate(ci)
 		if nil != err {
-			return server.ToStatusError(http.StatusBadRequest, err)
+			return server.ToStatusError(http.StatusBadRequest, errors.WithStack(err))
 		}
 
 		rs, err := c.DeleteLogs(&ci)
 		if nil != err {
-			return server.ToStatusError(http.StatusBadRequest, err)
+			return server.ToStatusError(http.StatusBadRequest, errors.WithStack(err))
 		}
 		return server.WriteJSON(http.StatusOK, rs, w)
 	}

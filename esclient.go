@@ -110,6 +110,7 @@ type Launch struct {
 	} `json:"testItems,omitempty"`
 }
 
+// AnalyzerConf struct
 type AnalyzerConf struct {
 	MinDocFreq      float64    `json:"minDocFreq,omitempty"`
 	MintTermFreq    float64    `json:"minTermFreq,omitempty"`

@@ -55,13 +55,13 @@ type ESClient interface {
 
 	createIndexIfNotExists(indexName string) error
 	buildURL(pathElements ...string) string
-	sanitizeText(text string) string
+	sanitizeText(nLines int, text string) string
 }
 
 // Response struct
 type Response struct {
 	Acknowledged bool `json:"acknowledged,omitempty"`
-	Error        struct {
+	Error struct {
 		RootCause []struct {
 			Type   string `json:"type,omitempty"`
 			Reason string `json:"reason,omitempty"`
@@ -76,7 +76,7 @@ type Response struct {
 type BulkResponse struct {
 	Took   int  `json:"took,omitempty"`
 	Errors bool `json:"errors,omitempty"`
-	Items  []struct {
+	Items []struct {
 		Index struct {
 			Index   string `json:"_index,omitempty"`
 			Type    string `json:"_type,omitempty"`
@@ -92,22 +92,32 @@ type BulkResponse struct {
 
 // Launch struct
 type Launch struct {
-	LaunchID   string     `json:"launchId,required" validate:"required"`
-	Project    string     `json:"project,required" validate:"required"`
-	LaunchName string     `json:"launchName,omitempty"`
-	Mode       SearchMode `json:"analyzeMode"`
-	TestItems  []struct {
+	LaunchID   string       `json:"launchId,required" validate:"required"`
+	Project    string       `json:"project,required" validate:"required"`
+	LaunchName string       `json:"launchName,omitempty"`
+	Conf       AnalyzerConf `json:"analyzerConfig"`
+	TestItems []struct {
 		TestItemID        string `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`
 		IsAutoAnalyzed    bool   `json:"isAutoAnalyzed,required" validate:"required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
-		Logs              []struct {
+		Logs []struct {
 			LogID    string `json:"log_id,required" validate:"required"`
 			LogLevel int    `json:"logLevel,omitempty"`
 			Message  string `json:"message,required" validate:"required"`
 		} `json:"logs,omitempty"`
 	} `json:"testItems,omitempty"`
+}
+
+type AnalyzerConf struct {
+	MinDocFreq      float64    `json:"minDocFreq,omitempty"`
+	MintTermFreq    float64    `json:"minTermFreq,omitempty"`
+	MinShouldMatch  int        `json:"minShouldMatch,omitempty"`
+	LogLines        int        `json:"numberOfLogLines,omitempty"`
+	AAEnabled       bool       `json:"isAutoAnalyzerEnabled"`
+	Mode            SearchMode `json:"analyzer_mode"`
+	IndexingRunning bool       `json:"indexing_running"`
 }
 
 // Index struct
@@ -128,7 +138,7 @@ type Index struct {
 type SearchResult struct {
 	Took     int  `json:"took,omitempty"`
 	TimedOut bool `json:"timed_out,omitempty"`
-	Hits     struct {
+	Hits struct {
 		Total    int     `json:"total,omitempty"`
 		MaxScore float64 `json:"max_score,omitempty"`
 		Hits     []Hit   `json:"hits,omitempty"`
@@ -137,10 +147,10 @@ type SearchResult struct {
 
 //Hit is a single result from search index
 type Hit struct {
-	Index  string  `json:"_index,omitempty"`
-	Type   string  `json:"_type,omitempty"`
-	ID     string  `json:"_id,omitempty"`
-	Score  float64 `json:"_score,omitempty"`
+	Index string  `json:"_index,omitempty"`
+	Type  string  `json:"_type,omitempty"`
+	ID    string  `json:"_id,omitempty"`
+	Score float64 `json:"_score,omitempty"`
 	Source struct {
 		TestItem   string `json:"test_item,omitempty"`
 		IssueType  string `json:"issue_type,omitempty"`
@@ -308,7 +318,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 
 				bodies = append(bodies, op)
 
-				message := c.sanitizeText(l.Message)
+				message := c.sanitizeText(lc.Conf.LogLines, l.Message)
 
 				body := map[string]interface{}{
 					"launch_id":        lc.LaunchID,
@@ -346,7 +356,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 			issueTypes := make(map[string]*score)
 
 			for _, l := range ti.Logs {
-				message := c.sanitizeText(l.Message)
+				message := c.sanitizeText(-1, l.Message)
 
 				query := c.buildQuery(lc, ti.UniqueID, message)
 
@@ -395,7 +405,7 @@ func (c *client) createIndexIfNotExists(indexName string) error {
 	return errors.Wrap(err, "Cannot create ES index")
 }
 
-func (c *client) sanitizeText(text string) string {
+func (c *client) sanitizeText(nLines int, text string) string {
 	return c.re.ReplaceAllString(text, "")
 }
 
@@ -404,6 +414,21 @@ func (c *client) buildURL(pathElements ...string) string {
 }
 
 func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interface{} {
+	minDocFreq := launch.Conf.MinDocFreq
+	if 0 == minDocFreq {
+		minDocFreq = c.searchCfg.MinDocFreq
+	}
+	minTermFreq := launch.Conf.MintTermFreq
+	if 0 == minTermFreq {
+		minTermFreq = c.searchCfg.MinTermFreq
+	}
+	var minShouldMatch string
+	if 0 == launch.Conf.MinShouldMatch {
+		minShouldMatch = c.searchCfg.MinShouldMatch
+	} else {
+		minShouldMatch = fmt.Sprintf("%s%%", strconv.Itoa(launch.Conf.MinShouldMatch))
+	}
+
 	q := EsQueryRQ{
 		Size: 10,
 		Query: &EsQuery{
@@ -431,35 +456,35 @@ func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interfac
 				},
 			},
 		}}
-	switch launch.Mode {
+	switch launch.Conf.Mode {
 	case SearchModeAll, SearchModeNotFound:
 		q.Query.Bool.Should = append(q.Query.Bool.Should, Condition{
 			Term: map[string]TermCondition{"launch_name": {launch.LaunchName, NewBoost(math.Abs(c.searchCfg.BoostLaunch))}},
 		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(c.searchCfg.MinDocFreq, logMessage))
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(minDocFreq, minTermFreq, minShouldMatch, logMessage))
 	case SearchModeLaunchName:
 		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
 			Term: map[string]TermCondition{"launch_name": {Value: launch.LaunchName}},
 		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(c.searchCfg.MinDocFreq, logMessage))
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(minDocFreq, minTermFreq, minShouldMatch, logMessage))
 	case SearchModeCurrentLaunch:
 		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
 			Term: map[string]TermCondition{"launch_id": {Value: launch.LaunchID}},
 		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(float64(1), logMessage))
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(float64(1), minTermFreq, minShouldMatch, logMessage))
 	}
 
 	return q
 }
 
-func (c *client) buildMoreLikeThis(minDocFreq float64, logMessage string) Condition {
+func (c *client) buildMoreLikeThis(minDocFreq, minTermFreq float64, minShouldMatch, logMessage string) Condition {
 	return Condition{
 		MoreLikeThis: &MoreLikeThisCondition{
 			Fields:         []string{"message"},
 			Like:           logMessage,
 			MinDocFreq:     minDocFreq,
-			MinTermFreq:    c.searchCfg.MinTermFreq,
-			MinShouldMatch: c.searchCfg.MinShouldMatch,
+			MinTermFreq:    minTermFreq,
+			MinShouldMatch: minShouldMatch,
 		},
 	}
 }
@@ -568,4 +593,29 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 	}
 
 	return rsBody, nil
+}
+
+// findNth searches for the nth occurrence of string
+func findNth(str, f string, n int) int {
+	i := 0
+	for m := 1; m <= n; m++ {
+		x := strings.Index(str[i:], f)
+		if x < 0 {
+			return x
+		}
+		if m == n {
+			return x + i
+		}
+		i += x + len(f)
+	}
+	return -1
+}
+
+// findNth searches for the nth occurrence of string
+func firstLines(str string, n int) string {
+	sep := findNth(str, "\n", n)
+	if sep > 0 {
+		return str[0:sep]
+	}
+	return str
 }

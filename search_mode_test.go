@@ -33,13 +33,15 @@ var _ = Describe("SearchType", func() {
 		var launches []Launch
 		err := json.Unmarshal([]byte(data), &launches)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(launches[0].Mode).Should(BeEquivalentTo(SearchModeAll))
+		Expect(launches[0].Conf.Mode).Should(BeEquivalentTo(SearchModeAll))
 	})
 
 	It("should serialize correctly from string correctly", func() {
-		data := `[{"launchId":"","project":"","launchName":"name","analyzeMode":"ALL"}]`
+		data := `[{"launchId":"","project":"","launchName":"name","analyzerConfig":{"isAutoAnalyzerEnabled":false,"analyzer_mode":"ALL","indexing_running":false}}]`
 		launches := []Launch{{
-			Mode:       SearchModeAll,
+			Conf: AnalyzerConf{
+				Mode: SearchModeAll,
+			},
 			LaunchName: "name",
 		}}
 		d, err := json.Marshal(launches)

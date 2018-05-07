@@ -479,3 +479,77 @@ func startServer(t *testing.T, expectedCalls []ServerCall, i *int) *httptest.Ser
 
 	return ts
 }
+
+func Test_findNth(t *testing.T) {
+	type args struct {
+		str string
+		f   string
+		n   int
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "one occurence",
+			args: args{str: "search", f: "se", n: 1},
+			want: 0,
+		},
+		{
+			name: "multiple occurence",
+			args: args{str: "search search", f: "se", n: 2},
+			want: 7,
+		},
+		{
+			name: "multiple occurence - third",
+			args: args{str: "ok ok ok ok ok", f: "k", n: 3},
+			want: 7,
+		},
+		{
+			name: "not found",
+			args: args{str: "search search", f: "se", n: 3},
+			want: -1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := findNth(tt.args.str, tt.args.f, tt.args.n); got != tt.want {
+				t.Errorf("findNth() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_firstLines(t *testing.T) {
+	type args struct {
+		str string
+		n   int
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "pos",
+			args: args{str: `hello
+world`, n: 1},
+			want: "hello",
+		},
+		{
+			name: "pos",
+			args: args{str: `hello
+world  
+hello`, n: 2},
+			want: "hello\nworld  ",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := firstLines(tt.args.str, tt.args.n); got != tt.want {
+				t.Errorf("firstLines() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

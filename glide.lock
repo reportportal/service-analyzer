@@ -1,53 +1,40 @@
-hash: e305ee6090ad58e315558e2ab99adfde0f622a7ec529c41d16d7e410b4b5eb53
-
-updated: 2018-04-12T16:52:38.68223+03:00
+hash: 85843aad42aec080ffa4772cc95177b4f411487f3a984a40bd1e6bfbb94ec4e4
+updated: 2018-05-29T12:37:51.282458+03:00
 imports:
-- name: github.com/armon/go-metrics
-  version: 783273d703149aaeb9897cf58613d5af48861c25
 - name: github.com/caarlos0/env
-  version: 7cd7992b3bc86f920394f8de92c13900da1a46b7
-- name: github.com/cenkalti/backoff
-  version: 4dc77674aceaabba2c7e3da25d4c823edfb73f99
-- name: github.com/clbanning/x2j
-  version: 5ee34bb343f10ecfc125261107681de62f985cf6
-- name: github.com/franela/goreq
-  version: 9df54ca75ad62b6295f33ca96e16a2ca10bc137a
+  version: 1cddc31c48c56ecd700d873edb9fd5b6f5df922a
 - name: github.com/go-chi/chi
   version: e83ac2304db3c50cf03d96a2fcd39009d458bc35
   subpackages:
   - middleware
 - name: github.com/go-playground/locales
-  version: f63010822830b6fe52288ee52d5a1151088ce039
+  version: 1e5f1161c6416a5ff48840eb8724a394e48cc534
   subpackages:
   - currency
 - name: github.com/go-playground/universal-translator
   version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/hashicorp/consul
-  version: 9a494b5fb9c86180a5702e29c485df1507a47198
+  version: 5174058f0d2bda63fa5198ab96c33d9a909c58ed
   subpackages:
   - api
 - name: github.com/hashicorp/go-cleanhttp
-  version: d5fe4b57a186c716b0e00b8c301cbd9b4182694d
-- name: github.com/hashicorp/go-immutable-radix
-  version: 7f3cd4390caab3250a57f30efdb2a65dd7649ecf
+  version: 3573b8b52aa7b37b9358d966a898feb387f62437
 - name: github.com/hashicorp/go-rootcerts
   version: 6bb64b370b90e7ef1fa532be9e591a81c3493e00
-- name: github.com/hashicorp/golang-lru
-  version: 0fb14efe8c47ae851c0034ed7a448854d3d34cf3
-  subpackages:
-  - simplelru
 - name: github.com/hashicorp/serf
-  version: fc4bdedf2366c64984e280c6eefc703ca7812585
+  version: 555c6fa2a11d1f8e08ac9964015e864a3f61e7c3
   subpackages:
   - coordinate
-- name: github.com/hudl/fargo
-  version: 14ced469f7dc175f6fbf9f55d799f9f12e302965
-- name: github.com/miekg/dns
-  version: f01e44c2fdbf755201344b5b7917f974a4badd13
+- name: github.com/mattn/go-colorable
+  version: efa589957cd060542a26d2dd7832fd6a6c6c3ade
+- name: github.com/mattn/go-isatty
+  version: 6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c
+- name: github.com/mgutz/ansi
+  version: 9520e82c474b0a04dd04f8a40959027271bab992
 - name: github.com/mitchellh/go-homedir
   version: b8bc1bf767474819792c23f32d8286a45736f1c6
 - name: github.com/onsi/ginkgo
-  version: 9eda700730cba42af70d53180f9dcce9266bc2bc
+  version: fa5fabab2a1bfbd924faf4c067d07ae414e2aedf
   subpackages:
   - config
   - ginkgo
@@ -68,7 +55,7 @@ imports:
   - reporters/stenographer/support/go-isatty
   - types
 - name: github.com/onsi/gomega
-  version: 003f63b7f4cff3fc95357005358af2de0f5fe152
+  version: 62bff4df71bdbc266561a0caee19f0594b17c240
   subpackages:
   - format
   - internal/assertion
@@ -81,38 +68,32 @@ imports:
   - matchers/support/goraph/node
   - matchers/support/goraph/util
   - types
-- name: github.com/op/go-logging
-  version: d2e44aa77b7195c0ef782189985dd8550e22e4de
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/sirupsen/logrus
   version: c155da19408a8799da419ed3eeb0cb5db0ad5dbc
+- name: github.com/x-cray/logrus-prefixed-formatter
+  version: bb2702d423886830dee131692131d35648c382e2
 - name: golang.org/x/crypto
-  version: d9133f5469342136e669e85192a26056b587f503
+  version: c84b36c635ad003a10f0c755dff5685ceef18c71
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
-  version: 2fb46b16b8dda405028c50f7c7f0f9dd1fa6bfb1
+  version: 0a9397675ba34b2845f758fe3cd68828369c6517
   subpackages:
   - context
   - html
   - html/atom
   - html/charset
 - name: golang.org/x/sys
-  version: 37707fdb30a5b38865cfb95e5aab41707daec7fd
+  version: 314a259e304ff91bd6985da2a7149bbf91237993
   subpackages:
   - unix
   - windows
-- name: gopkg.in/gcfg.v1
-  version: 0ef1a8547f99b94fac9af5377dd72febba18f37c
-  subpackages:
-  - scanner
-  - token
-  - types
 - name: gopkg.in/go-playground/validator.v9
-  version: 14984d91328f9612b58443cbdf4a077d4fd71091
+  version: f28cb45dc0f0f406ba2015cdb59a5203ad220bc2
 - name: gopkg.in/reportportal/commons-go.v1
-  version: b3b4a0be0763fec7a1e8dc8cdfc67abe0ecde370
+  version: 8941600c4b44fc35763116ec9158b93dfd9359df
   subpackages:
   - commons
   - conf
@@ -132,7 +113,7 @@ testImports:
   subpackages:
   - assert
 - name: golang.org/x/text
-  version: f21a4dfb5e38f5895301dc265a8def02365cc3d0
+  version: cfdf022e86b4ecfb646e1efbd7db175dd623a8fa
   subpackages:
   - encoding
   - encoding/charmap
@@ -150,4 +131,4 @@ testImports:
   - runes
   - transform
 - name: gopkg.in/yaml.v2
-  version: d670f9405373e636a5a2765eea47fac0c9bc91a4
+  version: 1be3d31502d6eabc0dd7ce5b0daab022e14a5538

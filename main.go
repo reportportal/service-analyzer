@@ -27,6 +27,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 	"gopkg.in/reportportal/commons-go.v1/commons"
 	"gopkg.in/reportportal/commons-go.v1/conf"
 	"gopkg.in/reportportal/commons-go.v1/server"
@@ -36,7 +37,12 @@ var log = logrus.New()
 
 func init() {
 	// Log as JSON instead of the default ASCII formatter.
-	log.Formatter = &logrus.TextFormatter{}
+	log.Formatter = &prefixed.TextFormatter{
+		DisableColors:   true,
+		TimestampFormat: "2006-01-02 15:04:05",
+		FullTimestamp:   true,
+		ForceFormatting: true,
+	}
 
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example

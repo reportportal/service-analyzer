@@ -61,7 +61,7 @@ type ESClient interface {
 // Response struct
 type Response struct {
 	Acknowledged bool `json:"acknowledged,omitempty"`
-	Error        struct {
+	Error struct {
 		RootCause []struct {
 			Type   string `json:"type,omitempty"`
 			Reason string `json:"reason,omitempty"`
@@ -76,7 +76,7 @@ type Response struct {
 type BulkResponse struct {
 	Took   int  `json:"took,omitempty"`
 	Errors bool `json:"errors,omitempty"`
-	Items  []struct {
+	Items []struct {
 		Index struct {
 			Index   string `json:"_index,omitempty"`
 			Type    string `json:"_type,omitempty"`
@@ -96,13 +96,13 @@ type Launch struct {
 	Project    string       `json:"project,required" validate:"required"`
 	LaunchName string       `json:"launchName,omitempty"`
 	Conf       AnalyzerConf `json:"analyzerConfig"`
-	TestItems  []struct {
+	TestItems []struct {
 		TestItemID        string `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`
 		IsAutoAnalyzed    bool   `json:"isAutoAnalyzed,required" validate:"required"`
 		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
-		Logs              []struct {
+		Logs []struct {
 			LogID    string `json:"log_id,required" validate:"required"`
 			LogLevel int    `json:"logLevel,omitempty"`
 			Message  string `json:"message,required" validate:"required"`
@@ -139,7 +139,7 @@ type Index struct {
 type SearchResult struct {
 	Took     int  `json:"took,omitempty"`
 	TimedOut bool `json:"timed_out,omitempty"`
-	Hits     struct {
+	Hits struct {
 		Total    int     `json:"total,omitempty"`
 		MaxScore float64 `json:"max_score,omitempty"`
 		Hits     []Hit   `json:"hits,omitempty"`
@@ -148,10 +148,10 @@ type SearchResult struct {
 
 //Hit is a single result from search index
 type Hit struct {
-	Index  string  `json:"_index,omitempty"`
-	Type   string  `json:"_type,omitempty"`
-	ID     string  `json:"_id,omitempty"`
-	Score  float64 `json:"_score,omitempty"`
+	Index string  `json:"_index,omitempty"`
+	Type  string  `json:"_type,omitempty"`
+	ID    string  `json:"_id,omitempty"`
+	Score float64 `json:"_score,omitempty"`
 	Source struct {
 		TestItem   string `json:"test_item,omitempty"`
 		IssueType  string `json:"issue_type,omitempty"`
@@ -224,6 +224,8 @@ func (c *client) ListIndices() ([]Index, error) {
 }
 
 func (c *client) CreateIndex(name string) (*Response, error) {
+	log.Debugf("Creating index %s", name)
+
 	body := map[string]interface{}{
 		"settings": map[string]interface{}{
 			"number_of_shards": 1,
@@ -266,6 +268,8 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 }
 
 func (c *client) IndexExists(name string) (bool, error) {
+	log.Debugf("Checking index %s", name)
+
 	url := c.buildURL(name)
 
 	httpClient := &http.Client{}
@@ -278,6 +282,7 @@ func (c *client) IndexExists(name string) (bool, error) {
 }
 
 func (c *client) DeleteIndex(name string) (*Response, error) {
+	log.Debugf("Deleting index %s", name)
 	url := c.buildURL(name)
 	rs := &Response{}
 	return rs, c.sendOpRequest(http.MethodDelete, url, rs)
@@ -301,6 +306,7 @@ func (c *client) DeleteLogs(ci *CleanIndex) (*Response, error) {
 }
 
 func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
+	log.Debugf("Indexing logs for %s launches", len(launches))
 
 	var bodies []interface{}
 
@@ -349,6 +355,8 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 }
 
 func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
+	log.Debugf("Starting analysis for %d launches", len(launches))
+
 	result := []AnalysisResult{}
 	for _, lc := range launches {
 		url := c.buildURL(lc.Project, "log", "_search")
@@ -391,6 +399,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 
 		}
 	}
+	log.Debugf("Analysis has found %d matches", len(result))
 
 	return result, nil
 }
@@ -586,7 +595,6 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 		return nil, errors.Wrap(err, "Cannot read ES response")
 	}
 
-	log.Debugf("ES responded with %d status code", rs.StatusCode)
 	if rs.StatusCode > http.StatusCreated && rs.StatusCode < http.StatusNotFound {
 		body := string(rsBody)
 		log.Errorf("ES communication error. Status code %d, Body %s", rs.StatusCode, body)

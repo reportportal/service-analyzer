@@ -41,7 +41,6 @@ func init() {
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example
 	log.Out = os.Stdout
-	log.SetLevel(logrus.DebugLevel)
 }
 
 //SearchConfig specified details of queries to elastic search
@@ -68,7 +67,8 @@ func main() {
 	cfg := struct {
 		*conf.RpConfig
 		*SearchConfig
-		ESHosts []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
+		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
+		LogLevel string   `env:"LOGGING_LEVEL" envDefault:"DEBUG"`
 	}{
 		RpConfig:     defCfg,
 		SearchConfig: &SearchConfig{},
@@ -78,6 +78,13 @@ func main() {
 	if nil != err {
 		log.Fatalf("Cannot load configuration")
 	}
+
+	logLevel, err := logrus.ParseLevel(cfg.LogLevel)
+	if nil != err {
+		log.Warnf("Unknown logging level %s", cfg.LogLevel)
+		logLevel = logrus.DebugLevel
+	}
+	log.SetLevel(logLevel)
 
 	cfg.AppName = "analyzer"
 	info := commons.GetBuildInfo()

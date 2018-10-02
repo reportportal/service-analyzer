@@ -303,7 +303,7 @@ func (c *client) DeleteLogs(ci *CleanIndex) (*Response, error) {
 }
 
 func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
-	log.Debugf("Indexing logs for %s launches", len(launches))
+	log.Debugf("Indexing logs for %d launches", len(launches))
 
 	var bodies []interface{}
 

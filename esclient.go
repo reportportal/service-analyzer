@@ -29,7 +29,6 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -176,7 +175,6 @@ type CleanIndex struct {
 
 type client struct {
 	hosts     []string
-	re        *regexp.Regexp
 	hc        *http.Client
 	searchCfg *SearchConfig
 }
@@ -186,7 +184,6 @@ func NewClient(hosts []string, searchCfg *SearchConfig) ESClient {
 	return &client{
 		hosts:     hosts,
 		searchCfg: searchCfg,
-		re:        regexp.MustCompile("\\d+"),
 		hc:        &http.Client{},
 	}
 }
@@ -418,7 +415,7 @@ func (c *client) createIndexIfNotExists(indexName string) error {
 }
 
 func (c *client) sanitizeText(text string) string {
-	return c.re.ReplaceAllString(text, "")
+	return text
 }
 
 func (c *client) buildURL(pathElements ...string) string {

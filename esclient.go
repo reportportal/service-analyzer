@@ -240,6 +240,10 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 						"type":     "text",
 						"analyzer": "standard",
 					},
+					"message_raw": map[string]interface{}{
+						"type":     "string",
+						"analyzer": "not_analyzed",
+					},
 					"log_level": map[string]interface{}{
 						"type": "integer",
 					},
@@ -568,6 +572,7 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
+			fmt.Println(string(rqBody))
 			// nolint
 			buff.Write(rqBody)
 			// nolint

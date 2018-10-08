@@ -27,7 +27,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	prefixed "github.com/x-cray/logrus-prefixed-formatter"
+	"github.com/x-cray/logrus-prefixed-formatter"
 	"gopkg.in/reportportal/commons-go.v1/commons"
 	"gopkg.in/reportportal/commons-go.v1/conf"
 	"gopkg.in/reportportal/commons-go.v1/server"
@@ -62,7 +62,7 @@ type SearchConfig struct {
 func main() {
 
 	defCfg := conf.EmptyConfig()
-	defCfg.Consul.Address = "registry:8500"
+	defCfg.Consul.Address = "http://localhost:8500"
 	defCfg.Consul.Tags = []string{
 		"urlprefix-/analyzer opts strip=/analyzer",
 		"traefik.frontend.rule=PathPrefixStrip:/analyzer",
@@ -73,7 +73,7 @@ func main() {
 	cfg := struct {
 		*conf.RpConfig
 		*SearchConfig
-		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
+		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://dev.epm-rpp.projects.epam.com:9200"`
 		LogLevel string   `env:"LOGGING_LEVEL" envDefault:"DEBUG"`
 	}{
 		RpConfig:     defCfg,
@@ -84,6 +84,7 @@ func main() {
 	if nil != err {
 		log.Fatalf("Cannot load configuration")
 	}
+	defCfg.Consul.Address = "http://localhost:8500"
 
 	logLevel, err := logrus.ParseLevel(cfg.LogLevel)
 	if nil != err {

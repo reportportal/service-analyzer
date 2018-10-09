@@ -73,7 +73,7 @@ func main() {
 	cfg := struct {
 		*conf.RpConfig
 		*SearchConfig
-		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://dev.epm-rpp.projects.epam.com:9200"`
+		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
 		LogLevel string   `env:"LOGGING_LEVEL" envDefault:"DEBUG"`
 	}{
 		RpConfig:     defCfg,

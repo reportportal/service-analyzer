@@ -84,7 +84,7 @@ func main() {
 	if nil != err {
 		log.Fatalf("Cannot load configuration")
 	}
-	defCfg.Consul.Address = "http://localhost:8500"
+	//defCfg.Consul.Address = "http://localhost:8500"
 
 	logLevel, err := logrus.ParseLevel(cfg.LogLevel)
 	if nil != err {

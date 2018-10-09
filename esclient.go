@@ -339,6 +339,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 					"issue_type":       ti.IssueType,
 					"log_level":        l.LogLevel,
 					"message":          message,
+					"message_raw":      message,
 				}
 
 				bodies = append(bodies, body)
@@ -493,7 +494,7 @@ func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interfac
 func (c *client) buildMoreLikeThis(minDocFreq, minTermFreq float64, minShouldMatch, logMessage string) Condition {
 	return Condition{
 		MoreLikeThis: &MoreLikeThisCondition{
-			Fields:         []string{"message"},
+			Fields:         []string{"message_raw"},
 			Like:           logMessage,
 			MinDocFreq:     minDocFreq,
 			MinTermFreq:    minTermFreq,

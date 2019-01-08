@@ -28,9 +28,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
-	"gopkg.in/reportportal/commons-go.v1/commons"
-	"gopkg.in/reportportal/commons-go.v1/conf"
-	"gopkg.in/reportportal/commons-go.v1/server"
+	"gopkg.in/reportportal/commons-go.v5/commons"
+	"gopkg.in/reportportal/commons-go.v5/conf"
+	"gopkg.in/reportportal/commons-go.v5/server"
 )
 
 var log = logrus.New()

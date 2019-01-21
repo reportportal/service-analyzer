@@ -58,8 +58,9 @@ type (
 		*SearchConfig
 		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
 		LogLevel string   `env:"LOGGING_LEVEL" envDefault:"DEBUG"`
-		//AmpqURL  string   `env:"AMQP_URL" envDefault:"amqp://guest:guest@rabbitmq:5672/"`
-		AmpqURL string `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@dev.epm-rpp.projects.epam.com:5672/"`
+		//AmqpURL  string   `env:"AMQP_URL" envDefault:"amqp://guest:guest@rabbitmq:5672/"`
+		AmqpURL          string `env:"AMQP_URL" envDefault:"amqp://guest:guest@rabbitmq:5672/"`
+		AmqpExchangeName string `env:"AMQP_EXCHANGE_NAME" envDefault:"analyzer-default"`
 	}
 
 	//SearchConfig specified details of queries to elastic search
@@ -164,7 +165,7 @@ func initRoutes(srv *server.RpServer, c ESClient) {
 }
 
 func newAmpqConnection(lc fx.Lifecycle, cfg *AppConfig) (*amqp.Connection, error) {
-	connection, err := amqp.DialConfig(cfg.AmpqURL, amqp.Config{
+	connection, err := amqp.DialConfig(cfg.AmqpURL, amqp.Config{
 		Vhost:     "analyzer",
 		Heartbeat: 10 * time.Second,
 	})
@@ -187,8 +188,7 @@ func newESClient(cfg *AppConfig) ESClient {
 	return NewClient(cfg.ESHosts, cfg.SearchConfig)
 }
 
-func initAmpq(conn *amqp.Connection, c ESClient) error {
-	const exchangeName = "av-analyzer"
+func initAmpq(conn *amqp.Connection, cfg *AppConfig, c ESClient) error {
 
 	ch, err := conn.Channel()
 	if nil != err {
@@ -201,18 +201,18 @@ func initAmpq(conn *amqp.Connection, c ESClient) error {
 	}()
 
 	err = ch.ExchangeDeclare(
-		exchangeName,        // name
-		amqp.ExchangeDirect, // kind
-		false,               // durable
-		true,                // delete when unused
-		false,               // exclusive
-		false,               // noWait
-		nil,                 // arguments
+		cfg.AmqpExchangeName, // name
+		amqp.ExchangeDirect,  // kind
+		false,                // durable
+		true,                 // delete when unused
+		false,                // exclusive
+		false,                // noWait
+		nil,                  // arguments
 	)
 	if err != nil {
 		return errors.Wrap(err, "Failed to declare a exchange")
 	}
-	log.Infof("Exchange %s has been declared", exchangeName)
+	log.Infof("Exchange %s has been declared", cfg.AmqpExchangeName)
 
 	q, err := ch.QueueDeclare(
 		"",    // name
@@ -228,9 +228,9 @@ func initAmpq(conn *amqp.Connection, c ESClient) error {
 	log.Infof("Queue %s has been declared", q.Name)
 
 	err = ch.QueueBind(
-		q.Name,       // queue name
-		"",           // routing key
-		exchangeName, // exchange
+		q.Name,               // queue name
+		"",                   // routing key
+		cfg.AmqpExchangeName, // exchange
 		false,
 		nil)
 	if err != nil {

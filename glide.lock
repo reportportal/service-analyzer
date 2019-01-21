@@ -1,5 +1,5 @@
-hash: b7a5119c9d029ee15f77068a48577833b4d0ca0aa3bec81f65d39998b47dede8
-updated: 2019-01-08T15:38:55.110102+03:00
+hash: 6c41f6a246cd41646c111fb5e164bbe5261e64651b0a6acb508b802454722769
+updated: 2019-01-21T18:01:02.693379+03:00
 imports:
 - name: github.com/caarlos0/env
   version: 518fcfb943252f77846f92ce5794086d9cb4a1b5
@@ -62,8 +62,25 @@ imports:
   version: ba968bfe8b2f7e042a574c888954fccecfa385b4
 - name: github.com/sirupsen/logrus
   version: e1e72e9de974bd926e5c56f83753fba2df402ce5
+- name: github.com/streadway/amqp
+  version: a314942b2fd9dde7a3f70ba3f1062848ce6eb392
 - name: github.com/x-cray/logrus-prefixed-formatter
   version: bb2702d423886830dee131692131d35648c382e2
+- name: go.uber.org/atomic
+  version: 1ea20fb1cbb1cc08cbd0d913a96dead89aa18289
+- name: go.uber.org/dig
+  version: 7ff117f761a3f1b3eb521945c17a1091438eb6de
+  subpackages:
+  - internal/digreflect
+  - internal/dot
+- name: go.uber.org/fx
+  version: 9c82e1daccdcbd27387a1f044bd3dc6d3f878bf4
+  subpackages:
+  - internal/fxlog
+  - internal/fxreflect
+  - internal/lifecycle
+- name: go.uber.org/multierr
+  version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
 - name: golang.org/x/crypto
   version: 0e37d006457bf46f9e6692014ba72ef82c33022c
   subpackages:
@@ -81,7 +98,7 @@ imports:
   - unix
   - windows
 - name: gopkg.in/go-playground/validator.v9
-  version: 0277b12d53df79c9dbf7311cb07fa9c81ed621bb
+  version: cdd5c28d217804eec51fa694927e6c57465748f6
 - name: gopkg.in/reportportal/commons-go.v5
   version: 31b24da0cae563d86c9b2ed9f34f1c083e0d760b
   subpackages:

@@ -21,16 +21,18 @@ along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"net/http"
-	"os"
-
-	"github.com/go-chi/chi"
+	"context"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	prefixed "github.com/x-cray/logrus-prefixed-formatter"
+	"github.com/streadway/amqp"
+	"github.com/x-cray/logrus-prefixed-formatter"
+	"go.uber.org/fx"
 	"gopkg.in/reportportal/commons-go.v5/commons"
 	"gopkg.in/reportportal/commons-go.v5/conf"
 	"gopkg.in/reportportal/commons-go.v5/server"
+	"net/http"
+	"os"
+	"time"
 )
 
 var log = logrus.New()
@@ -49,57 +51,94 @@ func init() {
 	log.Out = os.Stdout
 }
 
-//SearchConfig specified details of queries to elastic search
-type SearchConfig struct {
-	BoostLaunch    float64 `env:"ES_BOOST_LAUNCH" envDefault:"2.0"`
-	BoostUniqueID  float64 `env:"ES_BOOST_UNIQUE_ID" envDefault:"2.0"`
-	BoostAA        float64 `env:"ES_BOOST_AA" envDefault:"2.0"`
-	MinDocFreq     float64 `env:"ES_MIN_DOC_FREQ" envDefault:"7"`
-	MinTermFreq    float64 `env:"ES_MIN_TERM_FREQ" envDefault:"1"`
-	MinShouldMatch string  `env:"ES_MIN_SHOULD_MATCH" envDefault:"80%"`
-}
-
-func main() {
-
-	defCfg := conf.EmptyConfig()
-	defCfg.Consul.Address = "registry:8500"
-	defCfg.Consul.Tags = []string{
-		"urlprefix-/analyzer opts strip=/analyzer",
-		"traefik.frontend.rule=PathPrefixStrip:/analyzer",
-		"analyzer=ML",
-		"analyzer_index=true",
-		"analyzer_priority=10",
-	}
-	cfg := struct {
-		*conf.RpConfig
+type (
+	//AppConfig is the application configuration
+	AppConfig struct {
+		*conf.ServerConfig
 		*SearchConfig
 		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
 		LogLevel string   `env:"LOGGING_LEVEL" envDefault:"DEBUG"`
-	}{
-		RpConfig:     defCfg,
-		SearchConfig: &SearchConfig{},
+		//AmpqURL  string   `env:"AMQP_URL" envDefault:"amqp://guest:guest@rabbitmq:5672/"`
+		AmpqURL string `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@dev.epm-rpp.projects.epam.com:5672/"`
 	}
 
-	err := conf.LoadConfig(&cfg)
-	if nil != err {
-		log.Fatalf("Cannot load configuration")
+	//SearchConfig specified details of queries to elastic search
+	SearchConfig struct {
+		BoostLaunch    float64 `env:"ES_BOOST_LAUNCH" envDefault:"2.0"`
+		BoostUniqueID  float64 `env:"ES_BOOST_UNIQUE_ID" envDefault:"2.0"`
+		BoostAA        float64 `env:"ES_BOOST_AA" envDefault:"2.0"`
+		MinDocFreq     float64 `env:"ES_MIN_DOC_FREQ" envDefault:"7"`
+		MinTermFreq    float64 `env:"ES_MIN_TERM_FREQ" envDefault:"1"`
+		MinShouldMatch string  `env:"ES_MIN_SHOULD_MATCH" envDefault:"80%"`
 	}
+)
 
+func main() {
+	app := fx.New(
+		fx.Logger(log),
+
+		// Provide all the constructors we need, which teaches Fx how we'd like to
+		// construct the *log.Logger, http.Handler, and *http.ServeMux types.
+		// Remember that constructors are called lazily, so this block doesn't do
+		// much on its own.
+		fx.Provide(
+			newConfig,
+			newServer,
+			newESClient,
+
+			newAmpqConnection,
+		),
+		// Since constructors are called lazily, we need some invocations to
+		// kick-start our application. In this case, we'll use Register. Since it
+		// depends on an http.Handler and *http.ServeMux, calling it requires Fx
+		// to build those types using the constructors above. Since we call
+		// NewMux, we also register Lifecycle hooks to start and stop an HTTP
+		// server.
+		fx.Invoke(initLogger, initRoutes, initAmpq),
+	)
+
+	app.Run()
+	if nil != app.Err() {
+		log.Errorf("Terminated with error: %v", app.Err())
+	}
+	log.Error(app.Err())
+}
+
+func initLogger(cfg *AppConfig) {
 	logLevel, err := logrus.ParseLevel(cfg.LogLevel)
 	if nil != err {
 		log.Warnf("Unknown logging level %s", cfg.LogLevel)
 		logLevel = logrus.DebugLevel
 	}
 	log.SetLevel(logLevel)
+}
 
-	cfg.AppName = "analyzer"
+func newConfig() (*AppConfig, error) {
+	defCfg := conf.EmptyConfig()
+	cfg := &AppConfig{
+		ServerConfig: defCfg,
+		SearchConfig: &SearchConfig{},
+	}
+
+	return cfg, conf.LoadConfig(cfg)
+}
+
+func newServer(lc fx.Lifecycle, cfg *AppConfig) *server.RpServer {
 	info := commons.GetBuildInfo()
 	info.Name = "Analysis Service"
+	srv := server.New(cfg.ServerConfig, info)
 
-	srv := server.New(cfg.RpConfig, info)
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			go srv.StartServer()
+			return nil
+		},
+	})
 
-	c := NewClient(cfg.ESHosts, cfg.SearchConfig)
+	return srv
+}
 
+func initRoutes(srv *server.RpServer, c ESClient) {
 	srv.AddHealthCheckFunc(func() error {
 		if !c.Healthy() {
 			return errors.New("ES Cluster is down")
@@ -122,58 +161,119 @@ func main() {
 
 	srv.AddHandler(http.MethodDelete, "/_index/{index_id}", deleteIndexHandler(c))
 	srv.AddHandler(http.MethodPut, "/_index/delete", cleanIndexHandler(c))
-
-	srv.StartServer()
 }
 
-func deleteIndexHandler(c ESClient) func(w http.ResponseWriter, rq *http.Request) error {
-	return func(w http.ResponseWriter, rq *http.Request) error {
-		if id := chi.URLParam(rq, "index_id"); "" != id {
-			_, err := c.DeleteIndex(id)
-			return err
-		}
-		return server.ToStatusError(http.StatusBadRequest, errors.New("Index ID is incorrect"))
-	}
-}
+func newAmpqConnection(lc fx.Lifecycle, cfg *AppConfig) (*amqp.Connection, error) {
+	connection, err := amqp.DialConfig(cfg.AmpqURL, amqp.Config{
+		Vhost:     "analyzer",
+		Heartbeat: 10 * time.Second,
+	})
 
-func cleanIndexHandler(c ESClient) func(w http.ResponseWriter, rq *http.Request) error {
-	return func(w http.ResponseWriter, rq *http.Request) error {
-		var ci CleanIndex
-		err := server.ReadJSON(rq, &ci)
-		if nil != err {
-			return server.ToStatusError(http.StatusBadRequest, errors.Wrap(err, "Cannot read request body"))
-		}
-		err = server.Validate(ci)
-		if nil != err {
-			return server.ToStatusError(http.StatusBadRequest, errors.WithStack(err))
-		}
-
-		rs, err := c.DeleteLogs(&ci)
-		if nil != err {
-			return server.ToStatusError(http.StatusBadRequest, errors.WithStack(err))
-		}
-		return server.WriteJSON(http.StatusOK, rs, w)
-	}
-}
-
-type requestHandler func([]Launch) (interface{}, error)
-
-func handleRequest(w http.ResponseWriter, rq *http.Request, handler requestHandler) error {
-	var launches []Launch
-	err := server.ReadJSON(rq, &launches)
 	if err != nil {
-		return server.ToStatusError(http.StatusBadRequest, errors.WithStack(err))
+		return nil, err
 	}
 
-	for i, l := range launches {
-		if valErr := server.Validate(l); nil != valErr {
-			return server.ToStatusError(http.StatusBadRequest, errors.Wrapf(valErr, "Validation failed on Launch[%d]", i))
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			log.Warn("Closing AMQP connection")
+			return connection.Close()
+		},
+	})
+	log.Info("Connection to AMQP server has been established")
+	return connection, err
+
+}
+func newESClient(cfg *AppConfig) ESClient {
+	return NewClient(cfg.ESHosts, cfg.SearchConfig)
+}
+
+func initAmpq(conn *amqp.Connection, c ESClient) error {
+	const exchangeName = "av-analyzer"
+
+	ch, err := conn.Channel()
+	if nil != err {
+		return errors.Wrap(err, "Failed to open a channel")
+	}
+	defer func() {
+		if ch.Close() != nil {
+			log.Error("Unable to close opened ampq channel")
 		}
+	}()
+
+	err = ch.ExchangeDeclare(
+		exchangeName,        // name
+		amqp.ExchangeDirect, // kind
+		false,               // durable
+		true,                // delete when unused
+		false,               // exclusive
+		false,               // noWait
+		nil,                 // arguments
+	)
+	if err != nil {
+		return errors.Wrap(err, "Failed to declare a exchange")
+	}
+	log.Infof("Exchange %s has been declared", exchangeName)
+
+	q, err := ch.QueueDeclare(
+		"",    // name
+		false, // durable
+		false, // delete when unused
+		true,  // exclusive
+		false, // noWait
+		nil,   // arguments
+	)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to declare a queue: %s", q.Name)
+	}
+	log.Infof("Queue %s has been declared", q.Name)
+
+	err = ch.QueueBind(
+		q.Name,       // queue name
+		"",           // routing key
+		exchangeName, // exchange
+		false,
+		nil)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to bind a queue: %s", q.Name)
+	}
+	log.Infof("Queue %s has been bound", q.Name)
+
+	msgs, err := ch.Consume(
+		q.Name, // queue
+		"",     // consumer
+		true,   // auto-ack
+		false,  // exclusive
+		false,  // no-local
+		false,  // no-wait
+		nil,    // args
+	)
+	if err != nil {
+		return errors.Wrap(err, "Failed to register a consumer")
 	}
 
-	rs, err := handler(launches)
-	if err != nil {
-		return server.ToStatusError(http.StatusInternalServerError, errors.WithStack(err))
-	}
-	return server.WriteJSON(http.StatusOK, rs, w)
+	go func() {
+		for d := range msgs {
+			//var launches []Launch
+			//err := json.Unmarshal(d.Body, &launches)
+			//analyzerRS, err := c.AnalyzeLogs(launches)
+			//
+			//rs, err := json.Marshal(analyzerRS)
+			//
+			//err = ch.Publish(
+			//	"",        // exchange
+			//	d.ReplyTo, // routing key
+			//	false,     // mandatory
+			//	false,     // immediate
+			//	amqp.Publishing{
+			//		ContentType:   "text/plain",
+			//		CorrelationId: d.CorrelationId,
+			//		Body:          rs,
+			//	})
+			//failOnError(err, "Failed to publish a message")
+			log.Printf(" [x] %s", d.Body)
+		}
+	}()
+
+	log.Printf(" [*] Waiting for logs. To exit press CTRL+C")
+	return nil
 }

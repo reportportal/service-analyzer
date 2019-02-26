@@ -23,6 +23,7 @@ package main
 import (
 	"bytes"
 	"github.com/go-chi/chi"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/reportportal/commons-go.v5/conf"
 	"gopkg.in/reportportal/commons-go.v5/server"
@@ -36,7 +37,13 @@ func TestClient_DeleteIndex(t *testing.T) {
 	rr := httptest.NewRecorder()
 	mux := chi.NewMux()
 
-	mux.Handle("/", server.Handler{H: deleteIndexHandler(NewClient([]string{}, defaultSearchConfig()))})
+	h := &RequestHandler{c: NewClient([]string{}, defaultSearchConfig())}
+	mux.Handle("/", server.Handler{H: func(w http.ResponseWriter, rq *http.Request) error {
+		if id := chi.URLParam(rq, "index_id"); "" != id {
+			return handleHTTPRequest(w, rq, h.DeleteIndex(id))
+		}
+		return server.ToStatusError(http.StatusBadRequest, errors.New("Index ID is incorrect"))
+	}})
 
 	req, _ := http.NewRequest(http.MethodDelete, "/", nil)
 	mux.ServeHTTP(rr, req)
@@ -50,7 +57,9 @@ func TestClient_CleanIndex(t *testing.T) {
 	rr := httptest.NewRecorder()
 	mux := chi.NewMux()
 
-	mux.Handle("/_index/{index_id}/delete", server.Handler{H: cleanIndexHandler(NewClient([]string{}, defaultSearchConfig()))})
+	h := &RequestHandler{c: NewClient([]string{}, defaultSearchConfig())}
+
+	mux.Handle("/_index/{index_id}/delete", server.Handler{H: cleanIndexHttpHandler(h)})
 
 	req, _ := http.NewRequest(http.MethodPut, "/_index/xxx/delete", bytes.NewBufferString(`{"ids" : []}`))
 	mux.ServeHTTP(rr, req)

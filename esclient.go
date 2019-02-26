@@ -92,18 +92,18 @@ type BulkResponse struct {
 
 // Launch struct
 type Launch struct {
-	LaunchID   string       `json:"launchId,required" validate:"required"`
-	Project    string       `json:"project,required" validate:"required"`
+	LaunchID   int64        `json:"launchId,required" validate:"required"`
+	Project    int64        `json:"project,required" validate:"required"`
 	LaunchName string       `json:"launchName,omitempty"`
 	Conf       AnalyzerConf `json:"analyzerConfig"`
 	TestItems  []struct {
-		TestItemID        string `json:"testItemId,required" validate:"required"`
+		TestItemID        int64  `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`
 		IsAutoAnalyzed    bool   `json:"isAutoAnalyzed,required" validate:"required"`
-		IssueType         string `json:"issueType,omitempty"`
+		IssueType         int64  `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs              []struct {
-			LogID    string `json:"log_id,required" validate:"required"`
+			LogID    int64  `json:"log_id,required" validate:"required"`
 			LogLevel int    `json:"logLevel,omitempty"`
 			Message  string `json:"message,required" validate:"required"`
 		} `json:"logs,omitempty"`
@@ -117,8 +117,8 @@ type AnalyzerConf struct {
 	MinShouldMatch  int        `json:"minShouldMatch,omitempty"`
 	LogLines        int        `json:"numberOfLogLines,omitempty"`
 	AAEnabled       bool       `json:"isAutoAnalyzerEnabled"`
-	Mode            SearchMode `json:"analyzer_mode"`
-	IndexingRunning bool       `json:"indexing_running"`
+	Mode            SearchMode `json:"analyzerMode"`
+	IndexingRunning bool       `json:"indexingRunning"`
 }
 
 // Index struct
@@ -163,7 +163,7 @@ type Hit struct {
 
 //AnalysisResult represents result of analyzes which is basically array of found matches (predicted issue type and ID of most relevant Test Item)
 type AnalysisResult struct {
-	TestItem     string `json:"test_item,omitempty"`
+	TestItem     int64  `json:"test_item,omitempty"`
 	IssueType    string `json:"issue_type,omitempty"`
 	RelevantItem string `json:"relevant_item,omitempty"`
 }
@@ -311,7 +311,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 	var bodies []interface{}
 
 	for _, lc := range launches {
-		if err := c.createIndexIfNotExists(lc.Project); nil != err {
+		if err := c.createIndexIfNotExists(string(lc.Project)); nil != err {
 			return nil, errors.Wrap(err, "Cannot index logs")
 		}
 		for _, ti := range lc.TestItems {
@@ -361,7 +361,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 
 	result := []AnalysisResult{}
 	for _, lc := range launches {
-		url := c.buildURL(lc.Project, "log", "_search")
+		url := c.buildURL(string(lc.Project), "log", "_search")
 
 		for _, ti := range lc.TestItems {
 			issueTypes := make(map[string]*score)

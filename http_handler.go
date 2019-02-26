@@ -44,7 +44,7 @@ func handleHTTPRequest(w http.ResponseWriter, rq *http.Request, handler requestH
 	return server.WriteJSON(http.StatusOK, rs, w)
 }
 
-func handleAmqpRequest(ch amqp.Channel, d amqp.Delivery, handler requestHandler) error {
+func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler) error {
 	var launches []Launch
 	err := json.Unmarshal(d.Body, &launches)
 	if err != nil {

@@ -22,7 +22,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -58,11 +57,12 @@ type (
 	AppConfig struct {
 		*conf.ServerConfig
 		*SearchConfig
-		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
+		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://localhost:9200"`
 		LogLevel string   `env:"LOGGING_LEVEL" envDefault:"DEBUG"`
-		AmqpURL  string   `env:"AMQP_URL" envDefault:"amqp://guest:guest@rabbitmq:5672/"`
+		AmqpURL  string   `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@localhost:5672/"`
 		//AmqpURL          string `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@dev.epm-rpp.projects.epam.com:5672"`
 		AmqpExchangeName string `env:"AMQP_EXCHANGE_NAME" envDefault:"av.analyzer"`
+		AnalyzerPriority int    `env:"ANALYZER_PRIORITY" envDefault:"1"`
 	}
 
 	//SearchConfig specified details of queries to elastic search
@@ -87,11 +87,11 @@ func main() {
 		fx.Provide(
 			newConfig,
 			newServer,
-			NewRequestHandler,
 			newESClient,
 			NewAmqpClient,
+			NewRequestHandler,
 
-			newAmpqConnection,
+			newAmqpConnection,
 		),
 		// Since constructors are called lazily, we need some invocations to
 		// kick-start our application. In this case, we'll use Register. Since it
@@ -99,7 +99,7 @@ func main() {
 		// to build those types using the constructors above. Since we call
 		// NewMux, we also register Lifecycle hooks to start and stop an HTTP
 		// server.
-		fx.Invoke(initLogger, initRoutes, initAmpq),
+		fx.Invoke(initLogger, initRoutes, initAmqp),
 	)
 
 	app.Run()
@@ -167,7 +167,7 @@ func initRoutes(srv *server.RpServer, c ESClient, h *RequestHandler) {
 	srv.AddHandler(http.MethodPut, "/_index/delete", cleanIndexHttpHandler(h))
 }
 
-func newAmpqConnection(lc fx.Lifecycle, cfg *AppConfig) (*amqp.Connection, error) {
+func newAmqpConnection(lc fx.Lifecycle, cfg *AppConfig) (*amqp.Connection, error) {
 	connection, err := amqp.DialConfig(cfg.AmqpURL, amqp.Config{
 		Vhost:     "analyzer",
 		Heartbeat: 10 * time.Second,
@@ -191,7 +191,7 @@ func newESClient(cfg *AppConfig) ESClient {
 	return NewClient(cfg.ESHosts, cfg.SearchConfig)
 }
 
-func initAmpq(lc fx.Lifecycle, client *AmqpClient, h RequestHandler, cfg *AppConfig) error {
+func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppConfig) error {
 
 	var qName string
 	err := client.DoOnChannel(func(ch *amqp.Channel) error {
@@ -205,8 +205,9 @@ func initAmpq(lc fx.Lifecycle, client *AmqpClient, h RequestHandler, cfg *AppCon
 			false,                // internal
 			false,                // noWait
 			amqp.Table(map[string]interface{}{
-				"analyzer":       cfg.AmqpExchangeName,
-				"analyzer_index": true,
+				"analyzer":          cfg.AmqpExchangeName,
+				"analyzer_index":    true,
+				"analyzer_priority": cfg.AnalyzerPriority,
 			}), // arguments
 		)
 		if err != nil {
@@ -215,12 +216,12 @@ func initAmpq(lc fx.Lifecycle, client *AmqpClient, h RequestHandler, cfg *AppCon
 		log.Infof("Exchange '%s' has been declared", cfg.AmqpExchangeName)
 
 		q, err := ch.QueueDeclare(
-			"",    // name
-			false, // durable
-			true,  // delete when unused
-			true,  // exclusive
-			false, // noWait
-			nil,   // arguments
+			"index", // name
+			false,   // durable
+			true,    // delete when unused
+			true,    // exclusive
+			false,   // noWait
+			nil,     // arguments
 		)
 		if err != nil {
 			return errors.Wrapf(err, "Failed to declare a queue: %s", q.Name)
@@ -230,7 +231,7 @@ func initAmpq(lc fx.Lifecycle, client *AmqpClient, h RequestHandler, cfg *AppCon
 
 		err = ch.QueueBind(
 			q.Name,               // queue name
-			"analyze",            // routing key
+			"index",              // routing key
 			cfg.AmqpExchangeName, // exchange
 			false,
 			nil)
@@ -255,10 +256,8 @@ func initAmpq(lc fx.Lifecycle, client *AmqpClient, h RequestHandler, cfg *AppCon
 
 	return client.Receive(ctx, qName, false, true, false, false,
 		func(d amqp.Delivery) error {
-
-			//handleAmqpRequest()
-			//json.Unmarshal(d.Body)
-			fmt.Println(d)
-			return nil
+			return client.DoOnChannel(func(channel *amqp.Channel) error {
+				return handleAmqpRequest(channel, d, h.IndexLaunches)
+			})
 		})
 }

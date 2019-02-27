@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/pkg/errors"
 	"gopkg.in/reportportal/commons-go.v5/server"
-	"net/http"
 )
 
 type requestHandler func([]Launch) (interface{}, error)
@@ -29,7 +28,7 @@ func (h *RequestHandler) AnalyzeLogs(launches []Launch) (interface{}, error) {
 }
 
 //DeleteIndex deletes index
-func (h *RequestHandler) DeleteIndex(id string) func(launches []Launch) (interface{}, error) {
+func (h *RequestHandler) DeleteIndex(id int64) func(launches []Launch) (interface{}, error) {
 	return func(launches []Launch) (interface{}, error) {
 		_, err := h.c.DeleteIndex(id)
 		return nil, err
@@ -40,7 +39,7 @@ func (h *RequestHandler) DeleteIndex(id string) func(launches []Launch) (interfa
 func (h *RequestHandler) CleanIndex(ci *CleanIndex) (*Response, error) {
 	err := server.Validate(ci)
 	if nil != err {
-		return nil, server.ToStatusError(http.StatusBadRequest, errors.WithStack(err))
+		return nil, errors.WithStack(err)
 	}
 	return h.c.DeleteLogs(ci)
 }

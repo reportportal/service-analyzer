@@ -45,7 +45,7 @@ type ESClient interface {
 	ListIndices() ([]Index, error)
 	CreateIndex(name string) (*Response, error)
 	IndexExists(name string) (bool, error)
-	DeleteIndex(name string) (*Response, error)
+	DeleteIndex(name int64) (*Response, error)
 
 	IndexLogs(launches []Launch) (*BulkResponse, error)
 	DeleteLogs(ci *CleanIndex) (*Response, error)
@@ -103,7 +103,7 @@ type Launch struct {
 		IssueType         int64  `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs              []struct {
-			LogID    int64  `json:"log_id,required" validate:"required"`
+			LogID    int64  `json:"logId,required" validate:"required"`
 			LogLevel int    `json:"logLevel,omitempty"`
 			Message  string `json:"message,required" validate:"required"`
 		} `json:"logs,omitempty"`
@@ -170,8 +170,8 @@ type AnalysisResult struct {
 
 //CleanIndex is a request to clean index
 type CleanIndex struct {
-	IDs     []string `json:"ids,omitempty"`
-	Project string   `json:"project,required" validate:"required"`
+	IDs     []int64 `json:"ids,omitempty"`
+	Project int64   `json:"project,required" validate:"required"`
 }
 
 type client struct {
@@ -281,9 +281,9 @@ func (c *client) IndexExists(name string) (bool, error) {
 	return rs.StatusCode == http.StatusOK, nil
 }
 
-func (c *client) DeleteIndex(name string) (*Response, error) {
+func (c *client) DeleteIndex(name int64) (*Response, error) {
 	log.Debugf("Deleting index %s", name)
-	url := c.buildURL(name)
+	url := c.buildURL(string(name))
 	rs := &Response{}
 	return rs, c.sendOpRequest(http.MethodDelete, url, rs)
 }

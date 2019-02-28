@@ -228,45 +228,33 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 		},
 	})
 
-	err = client.Receive(ctx, analyzeQueue, false, true, false, false,
+	go client.Receive(ctx, analyzeQueue, false, true, false, false,
 		func(d amqp.Delivery) error {
 			return client.DoOnChannel(func(channel *amqp.Channel) error {
 				return handleAmqpRequest(channel, d, h.AnalyzeLogs)
 			})
 		})
-	if err != nil {
-		return err
-	}
 
-	err = client.Receive(ctx, indexQueue, false, true, false, false,
+	go client.Receive(ctx, indexQueue, false, true, false, false,
 		func(d amqp.Delivery) error {
 			return client.DoOnChannel(func(channel *amqp.Channel) error {
 				return handleAmqpRequest(channel, d, h.IndexLaunches)
 			})
 		})
-	if err != nil {
-		return err
-	}
 
-	err = client.Receive(ctx, deleteQueue, false, true, false, false,
+	go client.Receive(ctx, deleteQueue, false, true, false, false,
 		func(d amqp.Delivery) error {
 			return client.DoOnChannel(func(channel *amqp.Channel) error {
 				return handleDeleteRequest(d, h)
 			})
 		})
-	if err != nil {
-		return err
-	}
 
-	err = client.Receive(ctx, clearQueue, false, true, false, false,
+	go client.Receive(ctx, clearQueue, false, true, false, false,
 		func(d amqp.Delivery) error {
 			return client.DoOnChannel(func(channel *amqp.Channel) error {
 				return handleCleanRequest(d, h)
 			})
 		})
-	if err != nil {
-		return err
-	}
 
 	return nil
 }

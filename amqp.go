@@ -16,6 +16,7 @@ func NewAmqpClient(conn *amqp.Connection) *AmqpClient {
 	return &AmqpClient{conn: conn}
 }
 
+//DoOnChannel opens amqp channel and execute func
 func (a *AmqpClient) DoOnChannel(chCallback func(channel *amqp.Channel) error) error {
 	ch, err := a.conn.Channel()
 	if err != nil {

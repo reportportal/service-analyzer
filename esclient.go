@@ -100,7 +100,7 @@ type Launch struct {
 		TestItemID        int64  `json:"testItemId,required" validate:"required"`
 		UniqueID          string `json:"uniqueId,required" validate:"required"`
 		IsAutoAnalyzed    bool   `json:"isAutoAnalyzed,required" validate:"required"`
-		IssueType         int64  `json:"issueType,omitempty"`
+		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs              []struct {
 			LogID    int64  `json:"logId,required" validate:"required"`
@@ -153,7 +153,7 @@ type Hit struct {
 	ID     string  `json:"_id,omitempty"`
 	Score  float64 `json:"_score,omitempty"`
 	Source struct {
-		TestItem   string `json:"test_item,omitempty"`
+		TestItem   int64  `json:"test_item,omitempty"`
 		IssueType  string `json:"issue_type,omitempty"`
 		Message    string `json:"message,omitempty"`
 		LogLevel   int    `json:"log_level,omitempty"`
@@ -163,9 +163,9 @@ type Hit struct {
 
 //AnalysisResult represents result of analyzes which is basically array of found matches (predicted issue type and ID of most relevant Test Item)
 type AnalysisResult struct {
-	TestItem     int64  `json:"test_item,omitempty"`
-	IssueType    string `json:"issue_type,omitempty"`
-	RelevantItem string `json:"relevant_item,omitempty"`
+	TestItem     int64  `json:"testItem,omitempty"`
+	IssueType    string `json:"issueType,omitempty"`
+	RelevantItem int64  `json:"relevantItem,omitempty"`
 }
 
 //CleanIndex is a request to clean index
@@ -282,13 +282,14 @@ func (c *client) IndexExists(name string) (bool, error) {
 }
 
 func (c *client) DeleteIndex(name int64) (*Response, error) {
-	log.Debugf("Deleting index %s", name)
-	url := c.buildURL(string(name))
+	log.Debugf("Deleting index %d", name)
+	url := c.buildURL(strconv.FormatInt(name, 10))
 	rs := &Response{}
 	return rs, c.sendOpRequest(http.MethodDelete, url, rs)
 }
 
 func (c *client) DeleteLogs(ci *CleanIndex) (*Response, error) {
+	log.Debugf("Deleting logs %v", ci.IDs)
 	url := c.buildURL("_bulk")
 	url = url + "?refresh"
 	rs := &Response{}
@@ -311,7 +312,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 	var bodies []interface{}
 
 	for _, lc := range launches {
-		if err := c.createIndexIfNotExists(string(lc.Project)); nil != err {
+		if err := c.createIndexIfNotExists(strconv.FormatInt(lc.Project, 10)); nil != err {
 			return nil, errors.Wrap(err, "Cannot index logs")
 		}
 		for _, ti := range lc.TestItems {
@@ -361,7 +362,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 
 	result := []AnalysisResult{}
 	for _, lc := range launches {
-		url := c.buildURL(string(lc.Project), "log", "_search")
+		url := c.buildURL(strconv.FormatInt(lc.Project, 10), "log", "_search")
 
 		for _, ti := range lc.TestItems {
 			issueTypes := make(map[string]*score)
@@ -407,6 +408,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 }
 
 func (c *client) createIndexIfNotExists(indexName string) error {
+
 	exists, err := c.IndexExists(indexName)
 	if err != nil {
 		return errors.Wrap(err, "Cannot check ES index exists")

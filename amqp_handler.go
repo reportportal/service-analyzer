@@ -17,7 +17,7 @@ func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler
 	}
 
 	for i, l := range launches {
-		if err := validate.Struct(l); nil != err {
+		if err = validate.Struct(l); nil != err {
 			return errors.Wrapf(err, "Validation failed on Launch[%d]", i)
 		}
 	}
@@ -51,8 +51,10 @@ func handleDeleteRequest(d amqp.Delivery, h *RequestHandler) error {
 		return errors.WithStack(err)
 	}
 
-	h.DeleteIndex(id)
-
+	_, err = h.DeleteIndex(id)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	return nil
 }
 
@@ -63,7 +65,7 @@ func handleCleanRequest(d amqp.Delivery, h *RequestHandler) error {
 		return errors.WithStack(err)
 	}
 
-	if err := validate.Struct(ci); nil != err {
+	if err = validate.Struct(ci); nil != err {
 		return errors.Wrapf(err, "Validation failed on CleanIndex")
 	}
 

@@ -175,7 +175,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	var indexQueue = "index"
 	var analyzeQueue = "analyze"
 	var deleteQueue = "delete"
-	var clearQueue = "clear"
+	var clearQueue = "clean"
 
 	err := client.DoOnChannel(func(ch *amqp.Channel) error {
 		log.Infof("ExchangeName: %s", cfg.AmqpExchangeName)

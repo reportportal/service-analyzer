@@ -1,10 +1,5 @@
 package main
 
-import (
-	"github.com/pkg/errors"
-	"gopkg.in/reportportal/commons-go.v5/server"
-)
-
 type requestHandler func([]Launch) (interface{}, error)
 
 //RequestHandler handles ES-related requests
@@ -28,18 +23,11 @@ func (h *RequestHandler) AnalyzeLogs(launches []Launch) (interface{}, error) {
 }
 
 //DeleteIndex deletes index
-func (h *RequestHandler) DeleteIndex(id int64) func(launches []Launch) (interface{}, error) {
-	return func(launches []Launch) (interface{}, error) {
-		_, err := h.c.DeleteIndex(id)
-		return nil, err
-	}
+func (h *RequestHandler) DeleteIndex(id int64) (*Response, error) {
+	return h.c.DeleteIndex(id)
 }
 
 //CleanIndex cleans index
 func (h *RequestHandler) CleanIndex(ci *CleanIndex) (*Response, error) {
-	err := server.Validate(ci)
-	if nil != err {
-		return nil, errors.WithStack(err)
-	}
 	return h.c.DeleteLogs(ci)
 }

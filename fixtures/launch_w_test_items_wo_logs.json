@@ -1,10 +1,10 @@
 [{
-    "launchId": "1234567891",
-    "project": "idx1",
+  "launchId": 1234567891,
+  "project": 1,
     "launchName": "Launch with test items without logs",
     "testItems": [
         {
-            "testItemId": "0001",
+          "testItemId": 1,
             "uniqueId": "unique1",
             "issueType": "TI001",
             "logs": []

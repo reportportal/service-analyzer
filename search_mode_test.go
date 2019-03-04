@@ -24,9 +24,9 @@ var _ = Describe("SearchType", func() {
 		data := `[
   {
     "analyzeMode": "ALL",                   
-    "launchId": "5a0d84a8eff46f62cfd9cbe4",                   
+    "launchId": 1,                   
     "launchName": "test-results",  
-    "project": "analyzer",                       
+    "project": 12,                       
     "testItems": []
   }
 ]`
@@ -37,7 +37,7 @@ var _ = Describe("SearchType", func() {
 	})
 
 	It("should serialize correctly from string correctly", func() {
-		data := `[{"launchId":"","project":"","launchName":"name","analyzerConfig":{"isAutoAnalyzerEnabled":false,"analyzer_mode":"ALL","indexing_running":false}}]`
+		data := `[{"launchId":0,"project":0,"launchName":"name","analyzerConfig":{"isAutoAnalyzerEnabled":false,"analyzerMode":"ALL","indexingRunning":false}}]`
 		launches := []Launch{{
 			Conf: AnalyzerConf{
 				Mode: SearchModeAll,

@@ -15,6 +15,7 @@ REPO_NAME=reportportal/service-analyzer
 
 BUILD_INFO_LDFLAGS=-ldflags "-extldflags '"-static"' -X ${PACKAGE_COMMONS}/commons.repo=${REPO_NAME} -X ${PACKAGE_COMMONS}/commons.branch=${COMMIT_HASH} -X ${PACKAGE_COMMONS}/commons.buildDate=${BUILD_DATE} -X ${PACKAGE_COMMONS}/commons.version=${v}"
 IMAGE_NAME=reportportal/service-analyzer$(IMAGE_POSTFIX)
+IMAGE_NAME_DEV=reportportal-dev-5/service-analyzer
 
 .PHONY: vendor test build
 
@@ -47,7 +48,7 @@ build: checkstyle test
 
 # Builds the container
 build-image-dev:
-	docker build -t "$(IMAGE_NAME)" --build-arg version=${v} -f DockerfileDev .
+	docker build -t "$(IMAGE_NAME_DEV)" --build-arg version=${v} -f DockerfileDev .
 
 # Builds the container
 build-image:

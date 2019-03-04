@@ -8,7 +8,6 @@ node {
 
         stage('Checkout') {
             checkout scm
-            sh 'git checkout master'
             sh 'git pull'
         }
 

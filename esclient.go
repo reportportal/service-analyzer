@@ -352,7 +352,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 		return rs, nil
 	}
 
-	url := c.buildURL("_bulk")
+	url := c.buildURL("_bulk?refresh")
 
 	return rs, c.sendOpRequest(http.MethodPut, url, rs, bodies...)
 }

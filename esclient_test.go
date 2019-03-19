@@ -286,7 +286,7 @@ func TestIndexLogs(t *testing.T) {
 				},
 				{
 					method: "PUT",
-					uri:    "/_bulk",
+					uri:    "/_bulk?refresh",
 					rq:     getFixture(IndexLogsRq),
 					rs:     getFixture(IndexLogsRs),
 					status: http.StatusOK,

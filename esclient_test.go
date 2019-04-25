@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"gopkg.in/reportportal/commons-go.v5/conf"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -201,31 +202,31 @@ func TestIndexExists(t *testing.T) {
 func TestDeleteIndex(t *testing.T) {
 	tests := []struct {
 		calls          []ServerCall
-		index          string
+		index          int64
 		expectedStatus int
 	}{
 		{
 			calls: []ServerCall{
 				{
 					method: "DELETE",
-					uri:    "/idx0",
+					uri:    "/1",
 					rs:     getFixture(IndexDeletedRs),
 					status: http.StatusOK,
 				},
 			},
-			index:          "idx0",
+			index:          1,
 			expectedStatus: 0,
 		},
 		{
 			calls: []ServerCall{
 				{
 					method: "DELETE",
-					uri:    "/idx1",
+					uri:    "/2",
 					rs:     getFixture(IndexNotFoundRs),
 					status: http.StatusNotFound,
 				},
 			},
-			index:          "idx1",
+			index:          2,
 			expectedStatus: http.StatusNotFound,
 		},
 	}
@@ -254,7 +255,7 @@ func TestIndexLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "HEAD",
-					uri:    "/idx0",
+					uri:    "/1",
 					status: http.StatusOK,
 				},
 			},
@@ -264,7 +265,7 @@ func TestIndexLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "HEAD",
-					uri:    "/idx1",
+					uri:    "/1",
 					status: http.StatusOK,
 				},
 			},
@@ -274,18 +275,18 @@ func TestIndexLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "HEAD",
-					uri:    "/idx2",
+					uri:    "/2",
 					status: http.StatusNotFound,
 				},
 				{
 					method: "PUT",
-					uri:    "/idx2",
+					uri:    "/2",
 					rs:     getFixture(IndexCreatedRs),
 					status: http.StatusOK,
 				},
 				{
 					method: "PUT",
-					uri:    "/_bulk",
+					uri:    "/_bulk?refresh",
 					rq:     getFixture(IndexLogsRq),
 					rs:     getFixture(IndexLogsRs),
 					status: http.StatusOK,
@@ -330,14 +331,14 @@ func TestAnalyzeLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "GET",
-					uri:    "/idx2/log/_search",
+					uri:    "/2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(NoHitsSearchRs),
 					status: http.StatusOK,
 				},
 				{
 					method: "GET",
-					uri:    "/idx2/log/_search",
+					uri:    "/2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(NoHitsSearchRs),
 					status: http.StatusOK,
@@ -349,14 +350,14 @@ func TestAnalyzeLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "GET",
-					uri:    "/idx2/log/_search",
+					uri:    "/2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(NoHitsSearchRs),
 					status: http.StatusOK,
 				},
 				{
 					method: "GET",
-					uri:    "/idx2/log/_search",
+					uri:    "/2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(OneHitSearchRs),
 					status: http.StatusOK,
@@ -369,14 +370,14 @@ func TestAnalyzeLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "GET",
-					uri:    "/idx2/log/_search",
+					uri:    "/2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(OneHitSearchRs),
 					status: http.StatusOK,
 				},
 				{
 					method: "GET",
-					uri:    "/idx2/log/_search",
+					uri:    "/2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(TwoHitsSearchRs),
 					status: http.StatusOK,
@@ -389,14 +390,14 @@ func TestAnalyzeLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "GET",
-					uri:    "/idx2/log/_search",
+					uri:    "/2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(TwoHitsSearchRs),
 					status: http.StatusOK,
 				},
 				{
 					method: "GET",
-					uri:    "/idx2/log/_search",
+					uri:    "/2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(ThreeHitsSearchRs),
 					status: http.StatusOK,
@@ -409,14 +410,14 @@ func TestAnalyzeLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "GET",
-					uri:    "/idx2/log/_search",
+					uri:    "/2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(NoHitsSearchRs),
 					status: http.StatusOK,
 				},
 				{
 					method: "GET",
-					uri:    "/idx2/log/_search",
+					uri:    "/2/log/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(ThreeHitsSearchRs),
 					status: http.StatusOK,
@@ -449,7 +450,7 @@ func TestAnalyzeLogs(t *testing.T) {
 func TestClearIndex(t *testing.T) {
 	assert.Error(t, server.Validate(&CleanIndex{}), "Incorrect struct validation")
 	assert.NoError(t, server.Validate(&CleanIndex{
-		Project: "project",
+		Project: 1,
 	}), "Incorrect struct validation")
 
 }
@@ -552,4 +553,10 @@ hello`, n: 2},
 			}
 		})
 	}
+}
+
+func defaultSearchConfig() *SearchConfig {
+	sc := &SearchConfig{}
+	conf.LoadConfig(sc)
+	return sc
 }

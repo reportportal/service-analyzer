@@ -8,8 +8,6 @@ node {
 
         stage('Checkout') {
             checkout scm
-            sh 'git checkout master'
-            sh 'git pull'
         }
 
         stage('Build') {
@@ -20,7 +18,7 @@ node {
                     }
 
                     stage('Deploy container') {
-                        sh "docker-compose -p reportportal -f $COMPOSE_FILE up -d --force-recreate analyzer"
+                        sh "docker-compose -p reportportal5 -f $COMPOSE_FILE_RP_5 up -d --force-recreate analyzer"
                     }
                 }
             }

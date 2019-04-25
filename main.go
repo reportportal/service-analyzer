@@ -22,15 +22,12 @@ package main
 
 import (
 	"context"
+	"github.com/caarlos0/env"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"github.com/x-cray/logrus-prefixed-formatter"
 	"go.uber.org/fx"
-	"gopkg.in/reportportal/commons-go.v5/commons"
-	"gopkg.in/reportportal/commons-go.v5/conf"
-	"gopkg.in/reportportal/commons-go.v5/server"
-	"net/http"
 	"os"
 	"time"
 )
@@ -54,13 +51,14 @@ func init() {
 type (
 	//AppConfig is the application configuration
 	AppConfig struct {
-		*conf.ServerConfig
 		*SearchConfig
 		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
 		LogLevel string   `env:"LOGGING_LEVEL" envDefault:"DEBUG"`
-		//AmqpURL  string   `env:"AMQP_URL" envDefault:"amqp://guest:guest@rabbitmq:5672/"`
-		AmqpURL          string `env:"AMQP_URL" envDefault:"amqp://guest:guest@rabbitmq:5672/"`
-		AmqpExchangeName string `env:"AMQP_EXCHANGE_NAME" envDefault:"analyzer-default"`
+		//AmqpURL  string   `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@localhost:5672/"`
+		AmqpURL          string `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@rabbitmq:5672"`
+		AmqpExchangeName string `env:"AMQP_EXCHANGE_NAME" envDefault:"analyzer"`
+		AnalyzerPriority int    `env:"ANALYZER_PRIORITY" envDefault:"1"`
+		AnalyzerIndex    bool   `env:"ANALYZER_INDEX" envDefault:"true"`
 	}
 
 	//SearchConfig specified details of queries to elastic search
@@ -84,10 +82,11 @@ func main() {
 		// much on its own.
 		fx.Provide(
 			newConfig,
-			newServer,
 			newESClient,
+			NewAmqpClient,
+			NewRequestHandler,
 
-			newAmpqConnection,
+			newAmqpConnection,
 		),
 		// Since constructors are called lazily, we need some invocations to
 		// kick-start our application. In this case, we'll use Register. Since it
@@ -95,7 +94,7 @@ func main() {
 		// to build those types using the constructors above. Since we call
 		// NewMux, we also register Lifecycle hooks to start and stop an HTTP
 		// server.
-		fx.Invoke(initLogger, initRoutes, initAmpq),
+		fx.Invoke(initLogger, initAmqp),
 	)
 
 	app.Run()
@@ -115,56 +114,14 @@ func initLogger(cfg *AppConfig) {
 }
 
 func newConfig() (*AppConfig, error) {
-	defCfg := conf.EmptyConfig()
 	cfg := &AppConfig{
-		ServerConfig: defCfg,
 		SearchConfig: &SearchConfig{},
 	}
 
-	return cfg, conf.LoadConfig(cfg)
+	return cfg, env.Parse(cfg)
 }
 
-func newServer(lc fx.Lifecycle, cfg *AppConfig) *server.RpServer {
-	info := commons.GetBuildInfo()
-	info.Name = "Analysis Service"
-	srv := server.New(cfg.ServerConfig, info)
-
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			go srv.StartServer()
-			return nil
-		},
-	})
-
-	return srv
-}
-
-func initRoutes(srv *server.RpServer, c ESClient) {
-	srv.AddHealthCheckFunc(func() error {
-		if !c.Healthy() {
-			return errors.New("ES Cluster is down")
-		}
-		return nil
-	})
-
-	srv.AddHandler(http.MethodPost, "/_index", func(w http.ResponseWriter, rq *http.Request) error {
-		return handleRequest(w, rq,
-			func(launches []Launch) (interface{}, error) {
-				return c.IndexLogs(launches)
-			})
-	})
-	srv.AddHandler(http.MethodPost, "/_analyze", func(w http.ResponseWriter, rq *http.Request) error {
-		return handleRequest(w, rq,
-			func(launches []Launch) (interface{}, error) {
-				return c.AnalyzeLogs(launches)
-			})
-	})
-
-	srv.AddHandler(http.MethodDelete, "/_index/{index_id}", deleteIndexHandler(c))
-	srv.AddHandler(http.MethodPut, "/_index/delete", cleanIndexHandler(c))
-}
-
-func newAmpqConnection(lc fx.Lifecycle, cfg *AppConfig) (*amqp.Connection, error) {
+func newAmqpConnection(lc fx.Lifecycle, cfg *AppConfig) (*amqp.Connection, error) {
 	connection, err := amqp.DialConfig(cfg.AmqpURL, amqp.Config{
 		Vhost:     "analyzer",
 		Heartbeat: 10 * time.Second,
@@ -188,36 +145,11 @@ func newESClient(cfg *AppConfig) ESClient {
 	return NewClient(cfg.ESHosts, cfg.SearchConfig)
 }
 
-func initAmpq(conn *amqp.Connection, cfg *AppConfig, c ESClient) error {
-
-	ch, err := conn.Channel()
-	if nil != err {
-		return errors.Wrap(err, "Failed to open a channel")
-	}
-	defer func() {
-		if ch.Close() != nil {
-			log.Error("Unable to close opened ampq channel")
-		}
-	}()
-
-	err = ch.ExchangeDeclare(
-		cfg.AmqpExchangeName, // name
-		amqp.ExchangeDirect,  // kind
-		false,                // durable
-		true,                 // delete when unused
-		false,                // exclusive
-		false,                // noWait
-		nil,                  // arguments
-	)
-	if err != nil {
-		return errors.Wrap(err, "Failed to declare a exchange")
-	}
-	log.Infof("Exchange %s has been declared", cfg.AmqpExchangeName)
-
+func bindQueue(ch *amqp.Channel, name string, exchangeName string) error {
 	q, err := ch.QueueDeclare(
-		"",    // name
+		name,  // name
 		false, // durable
-		false, // delete when unused
+		true,  // delete when unused
 		true,  // exclusive
 		false, // noWait
 		nil,   // arguments
@@ -225,55 +157,105 @@ func initAmpq(conn *amqp.Connection, cfg *AppConfig, c ESClient) error {
 	if err != nil {
 		return errors.Wrapf(err, "Failed to declare a queue: %s", q.Name)
 	}
-	log.Infof("Queue %s has been declared", q.Name)
+	log.Infof("Queue '%s' has been declared", q.Name)
 
 	err = ch.QueueBind(
-		q.Name,               // queue name
-		"",                   // routing key
-		cfg.AmqpExchangeName, // exchange
+		q.Name,       // queue name
+		name,         // routing key
+		exchangeName, // exchange
 		false,
 		nil)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to bind a queue: %s", q.Name)
 	}
-	log.Infof("Queue %s has been bound", q.Name)
+	return nil
+}
 
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		true,   // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
-	)
+func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppConfig) error {
+
+	var indexQueue = "index"
+	var analyzeQueue = "analyze"
+	var deleteQueue = "delete"
+	var clearQueue = "clean"
+
+	err := client.DoOnChannel(func(ch *amqp.Channel) error {
+		log.Infof("ExchangeName: %s", cfg.AmqpExchangeName)
+
+		err := ch.ExchangeDeclare(
+			cfg.AmqpExchangeName, // name
+			amqp.ExchangeDirect,  // kind
+			false,                // durable
+			true,                 // delete when unused
+			false,                // internal
+			false,                // noWait
+			amqp.Table(map[string]interface{}{
+				"analyzer":          cfg.AmqpExchangeName,
+				"analyzer_index":    cfg.AnalyzerIndex,
+				"analyzer_priority": cfg.AnalyzerPriority,
+			}), // arguments
+		)
+		if err != nil {
+			return errors.Wrap(err, "Failed to declare a exchange")
+		}
+		log.Infof("Exchange '%s' has been declared", cfg.AmqpExchangeName)
+
+		err = bindQueue(ch, indexQueue, cfg.AmqpExchangeName)
+		if err != nil {
+			return err
+		}
+		err = bindQueue(ch, analyzeQueue, cfg.AmqpExchangeName)
+		if err != nil {
+			return err
+		}
+		err = bindQueue(ch, deleteQueue, cfg.AmqpExchangeName)
+		if err != nil {
+			return err
+		}
+		err = bindQueue(ch, clearQueue, cfg.AmqpExchangeName)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		return errors.Wrap(err, "Failed to register a consumer")
+		return errors.Wrapf(err, "Unable to init AMQP objects: %v", err)
 	}
 
-	go func() {
-		for d := range msgs {
-			//var launches []Launch
-			//err := json.Unmarshal(d.Body, &launches)
-			//analyzerRS, err := c.AnalyzeLogs(launches)
-			//
-			//rs, err := json.Marshal(analyzerRS)
-			//
-			//err = ch.Publish(
-			//	"",        // exchange
-			//	d.ReplyTo, // routing key
-			//	false,     // mandatory
-			//	false,     // immediate
-			//	amqp.Publishing{
-			//		ContentType:   "text/plain",
-			//		CorrelationId: d.CorrelationId,
-			//		Body:          rs,
-			//	})
-			//failOnError(err, "Failed to publish a message")
-			log.Printf(" [x] %s", d.Body)
-		}
-	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			cancel()
+			return nil
+		},
+	})
 
-	log.Printf(" [*] Waiting for logs. To exit press CTRL+C")
+	go client.Receive(ctx, analyzeQueue, false, true, false, false,
+		func(d amqp.Delivery) error {
+			return client.DoOnChannel(func(channel *amqp.Channel) error {
+				return handleAmqpRequest(channel, d, h.AnalyzeLogs)
+			})
+		})
+
+	go client.Receive(ctx, indexQueue, false, true, false, false,
+		func(d amqp.Delivery) error {
+			return client.DoOnChannel(func(channel *amqp.Channel) error {
+				return handleAmqpRequest(channel, d, h.IndexLaunches)
+			})
+		})
+
+	go client.Receive(ctx, deleteQueue, false, true, false, false,
+		func(d amqp.Delivery) error {
+			return client.DoOnChannel(func(channel *amqp.Channel) error {
+				return handleDeleteRequest(d, h)
+			})
+		})
+
+	go client.Receive(ctx, clearQueue, false, true, false, false,
+		func(d amqp.Delivery) error {
+			return client.DoOnChannel(func(channel *amqp.Channel) error {
+				return handleCleanRequest(d, h)
+			})
+		})
+
 	return nil
 }

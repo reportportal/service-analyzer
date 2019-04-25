@@ -1,5 +1,5 @@
 hash: 6c41f6a246cd41646c111fb5e164bbe5261e64651b0a6acb508b802454722769
-updated: 2019-01-21T18:01:02.693379+03:00
+updated: 2019-02-15T11:26:45.953882+01:00
 imports:
 - name: github.com/caarlos0/env
   version: 518fcfb943252f77846f92ce5794086d9cb4a1b5
@@ -63,7 +63,7 @@ imports:
 - name: github.com/sirupsen/logrus
   version: e1e72e9de974bd926e5c56f83753fba2df402ce5
 - name: github.com/streadway/amqp
-  version: a314942b2fd9dde7a3f70ba3f1062848ce6eb392
+  version: 884228600bc96c993ab12fb81ba78bf0c280e88a
 - name: github.com/x-cray/logrus-prefixed-formatter
   version: bb2702d423886830dee131692131d35648c382e2
 - name: go.uber.org/atomic
@@ -74,7 +74,7 @@ imports:
   - internal/digreflect
   - internal/dot
 - name: go.uber.org/fx
-  version: 9c82e1daccdcbd27387a1f044bd3dc6d3f878bf4
+  version: 3de044da969b90ad0a3e4a7867a74662f645f3f9
   subpackages:
   - internal/fxlog
   - internal/fxreflect
@@ -82,23 +82,23 @@ imports:
 - name: go.uber.org/multierr
   version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
 - name: golang.org/x/crypto
-  version: 0e37d006457bf46f9e6692014ba72ef82c33022c
+  version: 74369b46fc6756741c016591724fd1cb8e26845f
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
-  version: f04abc6bdfa7a0171a8a0c9fd2ada9391044d056
+  version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
   subpackages:
   - context
   - html
   - html/atom
   - html/charset
 - name: golang.org/x/sys
-  version: 90868a75fefd03942536221d7c0e2f84ec62a668
+  version: e77772198cdc3dbfcf7f2de96630204df9fd3a0b
   subpackages:
   - unix
   - windows
 - name: gopkg.in/go-playground/validator.v9
-  version: cdd5c28d217804eec51fa694927e6c57465748f6
+  version: b199fa0642d29caca62b6a99d65cc981ba5edc3b
 - name: gopkg.in/reportportal/commons-go.v5
   version: 31b24da0cae563d86c9b2ed9f34f1c083e0d760b
   subpackages:
@@ -148,4 +148,4 @@ testImports:
 - name: gopkg.in/tomb.v1
   version: c131134a1947e9afd9cecfe11f4c6dff0732ae58
 - name: gopkg.in/yaml.v2
-  version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
+  version: 51d6538a90f86fe93ac480b35f37b2be17fef232

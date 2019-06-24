@@ -577,6 +577,7 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 	}
 
 	rq, err := http.NewRequest(method, url, rdr)
+	log.Debugf("Request to ES - method: %q;\n url: %q;\n body: %v", method, url, rdr)
 	if err != nil {
 		return nil, errors.Wrap(err, "Cannot build request to ES")
 	}
@@ -601,6 +602,8 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 		log.Errorf("ES communication error. Status code %d, Body %s", rs.StatusCode, body)
 		return nil, errors.New(body)
 	}
+
+	log.Debugf("Response from ES - %v", string(rsBody))
 
 	return rsBody, nil
 }

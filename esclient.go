@@ -1,17 +1,17 @@
 /*
-* Copyright 2019 EPAM Systems
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
+ * Copyright 2019 EPAM Systems
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package main
 
@@ -24,7 +24,6 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -171,7 +170,6 @@ type CleanIndex struct {
 
 type client struct {
 	hosts     []string
-	re        *regexp.Regexp
 	hc        *http.Client
 	searchCfg *SearchConfig
 }
@@ -181,7 +179,6 @@ func NewClient(hosts []string, searchCfg *SearchConfig) ESClient {
 	return &client{
 		hosts:     hosts,
 		searchCfg: searchCfg,
-		re:        regexp.MustCompile("\\d+"),
 		hc:        &http.Client{},
 	}
 }
@@ -237,6 +234,9 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 					"message": map[string]interface{}{
 						"type":     "text",
 						"analyzer": "standard",
+					},
+					"message_raw": map[string]interface{}{
+						"type": "keyword",
 					},
 					"log_level": map[string]interface{}{
 						"type": "integer",
@@ -334,6 +334,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 					"issue_type":       ti.IssueType,
 					"log_level":        l.LogLevel,
 					"message":          message,
+					"message_raw":      message,
 				}
 
 				bodies = append(bodies, body)
@@ -415,7 +416,7 @@ func (c *client) createIndexIfNotExists(indexName string) error {
 }
 
 func (c *client) sanitizeText(text string) string {
-	return c.re.ReplaceAllString(text, "")
+	return text
 }
 
 func (c *client) buildURL(pathElements ...string) string {
@@ -489,11 +490,11 @@ func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interfac
 func (c *client) buildMoreLikeThis(minDocFreq, minTermFreq float64, minShouldMatch, logMessage string) Condition {
 	return Condition{
 		MoreLikeThis: &MoreLikeThisCondition{
-			Fields:         []string{"message"},
+			Fields:         []string{"message_raw"},
 			Like:           logMessage,
-			MinDocFreq:     minDocFreq,
-			MinTermFreq:    minTermFreq,
-			MinShouldMatch: minShouldMatch,
+			MinDocFreq:     1,
+			MinTermFreq:    1,
+			MinShouldMatch: "0%",
 		},
 	}
 }

@@ -41,11 +41,15 @@ var _ = Describe("ES Query Struct", func() {
 
 		q1B, _ := json.Marshal(q1Struct)
 		var q1 map[string]interface{}
-		json.Unmarshal(q1B, &q1)
+		if err := json.Unmarshal(q1B, &q1); err != nil {
+			log.Error(err)
+		}
 
 		q2B, _ := json.Marshal(q2Struct)
 		var q2 map[string]interface{}
-		json.Unmarshal(q2B, &q2)
+		if err := json.Unmarshal(q2B, &q2); err != nil {
+			log.Error(err)
+		}
 
 		Expect(q2).To(BeEquivalentTo(q2))
 	})

@@ -54,6 +54,7 @@ type ESClient interface {
 }
 
 // Response struct
+//nolint:unused
 type Response struct {
 	Acknowledged bool `json:"acknowledged,omitempty"`
 	Error        struct {
@@ -72,6 +73,7 @@ type BulkResponse struct {
 	Took   int  `json:"took,omitempty"`
 	Errors bool `json:"errors,omitempty"`
 	Items  []struct {
+		//nolint:unused
 		Index struct {
 			Index   string `json:"_index,omitempty"`
 			Type    string `json:"_type,omitempty"`
@@ -92,10 +94,12 @@ type Launch struct {
 	LaunchName string       `json:"launchName,omitempty"`
 	Conf       AnalyzerConf `json:"analyzerConfig"`
 	TestItems  []struct {
-		TestItemID        int64  `json:"testItemId,required" validate:"required"`
-		UniqueID          string `json:"uniqueId,required" validate:"required"`
-		IsAutoAnalyzed    bool   `json:"isAutoAnalyzed,required" validate:"required"`
-		IssueType         string `json:"issueType,omitempty"`
+		TestItemID int64  `json:"testItemId,required" validate:"required"`
+		UniqueID   string `json:"uniqueId,required" validate:"required"`
+		//nolint:unused
+		IsAutoAnalyzed bool   `json:"isAutoAnalyzed,required" validate:"required"`
+		IssueType      string `json:"issueType,omitempty"`
+		//nolint:unused
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs              []struct {
 			LogID    int64  `json:"logId,required" validate:"required"`
@@ -134,7 +138,8 @@ type Index struct {
 type SearchResult struct {
 	Took     int  `json:"took,omitempty"`
 	TimedOut bool `json:"timed_out,omitempty"`
-	Hits     struct {
+	//nolint:unused
+	Hits struct {
 		Total    int     `json:"total,omitempty"`
 		MaxScore float64 `json:"max_score,omitempty"`
 		Hits     []Hit   `json:"hits,omitempty"`
@@ -142,6 +147,7 @@ type SearchResult struct {
 }
 
 //Hit is a single result from search index
+//nolint:unused
 type Hit struct {
 	Index  string  `json:"_index,omitempty"`
 	Type   string  `json:"_type,omitempty"`
@@ -181,7 +187,7 @@ func NewClient(hosts []string, searchCfg *SearchConfig) ESClient {
 	return &client{
 		hosts:     hosts,
 		searchCfg: searchCfg,
-		re:        regexp.MustCompile("\\d+"),
+		re:        regexp.MustCompile(`\d+`),
 		hc:        &http.Client{},
 	}
 }

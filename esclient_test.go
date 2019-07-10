@@ -18,14 +18,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/reportportal/commons-go.v5/conf"
+	"github.com/reportportal/commons-go/conf"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/reportportal/commons-go/server"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/reportportal/commons-go.v5/server"
 )
 
 const (
@@ -481,14 +481,20 @@ func startServer(t *testing.T, expectedCalls []ServerCall, i *int) *httptest.Ser
 		assert.Equal(t, expectedCall.method, r.Method)
 		assert.Equal(t, expectedCall.uri, r.URL.RequestURI())
 		if expectedCall.rq != "" {
-			defer r.Body.Close()
+			defer func() {
+				if cErr := r.Body.Close(); cErr != nil {
+					log.Error(cErr)
+				}
+			}()
 			rq, err := ioutil.ReadAll(r.Body)
 			assert.NoError(t, err)
 			assert.Equal(t, expectedCall.rq, string(rq))
 		}
 		w.WriteHeader(expectedCall.status)
 		if expectedCall.rs != "" {
-			w.Write([]byte(expectedCall.rs))
+			if _, wErr := w.Write([]byte(expectedCall.rs)); wErr != nil {
+				log.Error(wErr)
+			}
 		}
 		*i = *i + 1
 	}))
@@ -572,6 +578,9 @@ hello`, n: 2},
 
 func defaultSearchConfig() *SearchConfig {
 	sc := &SearchConfig{}
-	conf.LoadConfig(sc)
+	if err := conf.LoadConfig(sc); err != nil {
+		log.Error(err)
+		return &SearchConfig{}
+	}
 	return sc
 }

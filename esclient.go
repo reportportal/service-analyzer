@@ -32,9 +32,6 @@ import (
 //ErrorLoggingLevel is integer representation of ERROR logging level
 const ErrorLoggingLevel int = 40000
 
-//indexType is type of index in ES
-const indexType string = "log"
-
 // ESClient interface
 type ESClient interface {
 	ListIndices() ([]Index, error)
@@ -135,10 +132,16 @@ type SearchResult struct {
 	Took     int  `json:"took,omitempty"`
 	TimedOut bool `json:"timed_out,omitempty"`
 	Hits     struct {
-		Total    int     `json:"total,omitempty"`
+		Total    Total   `json:"total,omitempty"`
 		MaxScore float64 `json:"max_score,omitempty"`
 		Hits     []Hit   `json:"hits,omitempty"`
 	} `json:"hits,omitempty"`
+}
+
+// Total struct
+type Total struct {
+	Value    int    `json:"value,omitempty"`
+	Relation string `json:"relation,omitempty"`
 }
 
 //Hit is a single result from search index
@@ -226,30 +229,28 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 			"number_of_shards": 1,
 		},
 		"mappings": map[string]interface{}{
-			"log": map[string]interface{}{
-				"properties": map[string]interface{}{
-					"test_item": map[string]interface{}{
-						"type": "keyword",
-					},
-					"issue_type": map[string]interface{}{
-						"type": "keyword",
-					},
-					"message": map[string]interface{}{
-						"type":     "text",
-						"analyzer": "standard",
-					},
-					"log_level": map[string]interface{}{
-						"type": "integer",
-					},
-					"launch_name": map[string]interface{}{
-						"type": "keyword",
-					},
-					"unique_id": map[string]interface{}{
-						"type": "keyword",
-					},
-					"is_auto_analyzed": map[string]interface{}{
-						"type": "keyword",
-					},
+			"properties": map[string]interface{}{
+				"test_item": map[string]interface{}{
+					"type": "keyword",
+				},
+				"issue_type": map[string]interface{}{
+					"type": "keyword",
+				},
+				"message": map[string]interface{}{
+					"type":     "text",
+					"analyzer": "standard",
+				},
+				"log_level": map[string]interface{}{
+					"type": "integer",
+				},
+				"launch_name": map[string]interface{}{
+					"type": "keyword",
+				},
+				"unique_id": map[string]interface{}{
+					"type": "keyword",
+				},
+				"is_auto_analyzed": map[string]interface{}{
+					"type": "keyword",
 				},
 			},
 		},
@@ -294,7 +295,6 @@ func (c *client) DeleteLogs(ci *CleanIndex) (*Response, error) {
 			"delete": map[string]interface{}{
 				"_id":    id,
 				"_index": ci.Project,
-				"_type":  indexType,
 			},
 		}
 	}
@@ -317,7 +317,6 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 					"index": map[string]interface{}{
 						"_id":    l.LogID,
 						"_index": lc.Project,
-						"_type":  indexType,
 					},
 				}
 
@@ -357,7 +356,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 
 	result := []AnalysisResult{}
 	for _, lc := range launches {
-		url := c.buildURL(strconv.FormatInt(lc.Project, 10), "log", "_search")
+		url := c.buildURL(strconv.FormatInt(lc.Project, 10), "_search")
 
 		for _, ti := range lc.TestItems {
 			issueTypes := make(map[string]*score)
@@ -506,7 +505,7 @@ type score struct {
 }
 
 func calculateScores(rs *SearchResult, k int, scores map[string]*score) {
-	if rs.Hits.Total > 0 {
+	if rs.Hits.Total.Value > 0 {
 		n := len(rs.Hits.Hits)
 		if n < k {
 			k = n

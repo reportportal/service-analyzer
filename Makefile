@@ -10,7 +10,7 @@ RELEASE_DIR=release
 BUILD_DEPS:= github.com/alecthomas/gometalinter github.com/avarabyeu/releaser
 GODIRS_NOVENDOR = $(shell go list ./... | grep -v /vendor/)
 GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
-PACKAGE_COMMONS=github.com/reportportal/service-analyzer/vendor/gopkg.in/reportportal/commons-go.v5
+PACKAGE_COMMONS=github.com/reportportal/commons-go
 REPO_NAME=reportportal/service-analyzer
 
 BUILD_INFO_LDFLAGS=-ldflags "-extldflags '"-static"' -X ${PACKAGE_COMMONS}/commons.repo=${REPO_NAME} -X ${PACKAGE_COMMONS}/commons.branch=${COMMIT_HASH} -X ${PACKAGE_COMMONS}/commons.buildDate=${BUILD_DATE} -X ${PACKAGE_COMMONS}/commons.version=${v}"
@@ -24,19 +24,14 @@ help:
 	@echo "test       - go test"
 	@echo "checkstyle - gofmt+golint+misspell"
 
-vendor:
-	$(if $(shell which glide 2>/dev/null),$(echo "Glide is already installed..."),$(shell go get github.com/Masterminds/glide))
-	glide install
-
 get-build-deps:
-	$(GO) get $(BUILD_DEPS)
-	gometalinter --install
+	$(GO) get -u $(BUILD_DEPS)
 
 test:
-	go test $(glide novendor)
+	$(GO) test ${GODIRS_NOVENDOR}
 
 checkstyle:
-	gometalinter --vendor ./... --fast --disable=gas --disable=errcheck --disable=gotype --deadline 10m
+	docker run --rm -v ${PWD}:/app -w="/app" golangci/golangci-lint:v1.17 golangci-lint run --deadline 10m
 
 fmt:
 	gofmt -l -w -s ${GOFILES_NOVENDOR}

@@ -231,33 +231,49 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 		},
 	})
 
-	go client.Receive(ctx, analyzeQueue, false, true, false, false,
-		func(d amqp.Delivery) error {
-			return client.DoOnChannel(func(channel *amqp.Channel) error {
-				return handleAmqpRequest(channel, d, h.AnalyzeLogs)
-			})
-		})
+	go func() {
+		if err := client.Receive(ctx, analyzeQueue, false, true, false, false,
+			func(d amqp.Delivery) error {
+				return client.DoOnChannel(func(channel *amqp.Channel) error {
+					return handleAmqpRequest(channel, d, h.AnalyzeLogs)
+				})
+			}); err != nil {
+			log.Error(err)
+		}
+	}()
 
-	go client.Receive(ctx, indexQueue, false, true, false, false,
-		func(d amqp.Delivery) error {
-			return client.DoOnChannel(func(channel *amqp.Channel) error {
-				return handleAmqpRequest(channel, d, h.IndexLaunches)
-			})
-		})
+	go func() {
+		if err := client.Receive(ctx, indexQueue, false, true, false, false,
+			func(d amqp.Delivery) error {
+				return client.DoOnChannel(func(channel *amqp.Channel) error {
+					return handleAmqpRequest(channel, d, h.IndexLaunches)
+				})
+			}); err != nil {
+			log.Error(err)
+		}
+	}()
 
-	go client.Receive(ctx, deleteQueue, false, true, false, false,
-		func(d amqp.Delivery) error {
-			return client.DoOnChannel(func(channel *amqp.Channel) error {
-				return handleDeleteRequest(d, h)
-			})
-		})
+	go func() {
+		if err := client.Receive(ctx, deleteQueue, false, true, false, false,
+			func(d amqp.Delivery) error {
+				return client.DoOnChannel(func(channel *amqp.Channel) error {
+					return handleDeleteRequest(d, h)
+				})
+			}); err != nil {
+			log.Error(err)
+		}
+	}()
 
-	go client.Receive(ctx, clearQueue, false, true, false, false,
-		func(d amqp.Delivery) error {
-			return client.DoOnChannel(func(channel *amqp.Channel) error {
-				return handleCleanRequest(d, h)
-			})
-		})
+	go func() {
+		if err := client.Receive(ctx, clearQueue, false, true, false, false,
+			func(d amqp.Delivery) error {
+				return client.DoOnChannel(func(channel *amqp.Channel) error {
+					return handleCleanRequest(d, h)
+				})
+			}); err != nil {
+			log.Error(err)
+		}
+	}()
 
 	go client.Receive(ctx, searchQueue, false, true, false, false,
 		func(d amqp.Delivery) error {

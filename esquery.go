@@ -64,6 +64,7 @@ type TermCondition struct {
 }
 
 //RangeCondition is a term condition model
+//nolint:unused,deadcode
 type RangeCondition struct {
 	Value map[string]interface{} `json:"value,omitempty"`
 }

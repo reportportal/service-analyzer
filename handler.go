@@ -17,6 +17,8 @@ package main
 
 type requestHandler func([]Launch) (interface{}, error)
 
+type searchRequestHandler func(SearchLogs) (interface{}, error)
+
 //RequestHandler handles ES-related requests
 type RequestHandler struct {
 	c ESClient
@@ -35,6 +37,10 @@ func (h *RequestHandler) IndexLaunches(launches []Launch) (interface{}, error) {
 //AnalyzeLogs analyzes the logs
 func (h *RequestHandler) AnalyzeLogs(launches []Launch) (interface{}, error) {
 	return h.c.AnalyzeLogs(launches)
+}
+
+func (h *RequestHandler) SearchLogs(request SearchLogs) (interface{}, error) {
+	return h.c.SearchLogs(request)
 }
 
 //DeleteIndex deletes index

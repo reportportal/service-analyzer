@@ -59,6 +59,35 @@ func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler
 		})
 }
 
+func handleSearchRequest(ch *amqp.Channel, d amqp.Delivery, h searchRequestHandler) error {
+	var request SearchLogs
+	err := json.Unmarshal(d.Body, &request)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	response, err := h(request)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	rsBody, err := json.Marshal(response)
+	if err != nil {
+		return err
+	}
+
+	return ch.Publish(
+		"",        // exchange
+		d.ReplyTo, // routing key
+		false,     // mandatory
+		false,     // immediate
+		amqp.Publishing{
+			ContentType:   "application/json",
+			CorrelationId: d.CorrelationId,
+			Body:          rsBody,
+		})
+}
+
 func handleDeleteRequest(d amqp.Delivery, h *RequestHandler) error {
 	var id int64
 	err := json.Unmarshal(d.Body, &id)

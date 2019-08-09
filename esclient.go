@@ -42,6 +42,7 @@ type ESClient interface {
 	IndexLogs(launches []Launch) (*BulkResponse, error)
 	DeleteLogs(ci *CleanIndex) (*Response, error)
 	AnalyzeLogs(launches []Launch) ([]AnalysisResult, error)
+	SearchLogs(request SearchLogs) ([]int64, error)
 
 	Healthy() bool
 
@@ -170,6 +171,23 @@ type AnalysisResult struct {
 type CleanIndex struct {
 	IDs     []int64 `json:"ids,omitempty"`
 	Project int64   `json:"project,required" validate:"required"`
+}
+
+//Search logs request
+type SearchLogs struct {
+	LaunchId          int64           `json:"launchId,omitempty"`
+	LaunchName        string          `json:"launchName,omitempty"`
+	ItemId            int64           `json:"itemId,omitempty"`
+	ProjectId         int64           `json:"projectId,omitempty"`
+	FilteredLaunchIds []int64         `json:"filteredLaunchIds,omitempty"`
+	LogMessages       []string        `json:"logMessages,omitempty"`
+	Conf              SearchLogConfig `json:"searchConfig"`
+}
+
+//Search logs config
+type SearchLogConfig struct {
+	Mode     string `json:"searchMode,omitempty"`
+	LogLines int    `json:"numberOfLogLines,omitempty"`
 }
 
 type client struct {
@@ -364,7 +382,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 			for _, l := range ti.Logs {
 				message := c.sanitizeText(firstLines(l.Message, lc.Conf.LogLines))
 
-				query := c.buildQuery(lc, ti.UniqueID, message)
+				query := c.buildAnalyzeQuery(lc, ti.UniqueID, message)
 
 				rs := &SearchResult{}
 				err := c.sendOpRequest(http.MethodGet, url, rs, query)
@@ -401,6 +419,37 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 	return result, nil
 }
 
+func (c *client) SearchLogs(request SearchLogs) ([]int64, error) {
+	set := make(map[int64]bool)
+	for _, message := range request.LogMessages {
+		url := c.buildURL(strconv.FormatInt(request.ProjectId, 10), "_search")
+		sanitizedMsg := c.sanitizeText(firstLines(message, request.Conf.LogLines))
+		query := c.buildSearchQuery(request, sanitizedMsg)
+
+		response := &SearchResult{}
+		err := c.sendOpRequest(http.MethodGet, url, response, query)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		for _, bla := range response.Hits.Hits {
+			logIndex, err := strconv.ParseInt(bla.ID, 10, 64)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			set[logIndex] = true
+		}
+	}
+	keys := make([]int64, len(set))
+
+	i := 0
+	for k := range set {
+		keys[i] = k
+		i++
+	}
+
+	return keys, nil
+}
+
 func (c *client) createIndexIfNotExists(indexName string) error {
 
 	exists, err := c.IndexExists(indexName)
@@ -421,7 +470,7 @@ func (c *client) buildURL(pathElements ...string) string {
 	return c.hosts[0] + "/" + strings.Join(pathElements, "/")
 }
 
-func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interface{} {
+func (c *client) buildAnalyzeQuery(launch Launch, uniqueID, logMessage string) interface{} {
 	minDocFreq := launch.Conf.MinDocFreq
 	if 0 == minDocFreq {
 		minDocFreq = c.searchCfg.MinDocFreq
@@ -442,7 +491,7 @@ func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interfac
 		Query: &EsQuery{
 			Bool: &BoolCondition{
 				MustNot: &Condition{
-					Wildcard: map[string]interface{}{"issue_type": "TI*"},
+					Wildcard: map[string]interface{}{"issue_type": "ti*"},
 				},
 				Must: []Condition{
 					{
@@ -480,6 +529,55 @@ func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interfac
 			Term: map[string]TermCondition{"launch_id": {Value: launch.LaunchID}},
 		})
 		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(float64(1), minTermFreq, minShouldMatch, logMessage))
+	}
+
+	return q
+}
+
+func (c *client) buildSearchQuery(request SearchLogs, logMessage string) interface{} {
+	q := EsQueryRQ{
+		Size: 10,
+		Query: &EsQuery{
+			Bool: &BoolCondition{
+				MustNot: &Condition{
+					Term: map[string]TermCondition{"test_item": {request.ItemId, NewBoost(1.0)}},
+				},
+				Must: []Condition{
+					{
+						Range: map[string]interface{}{"log_level": map[string]interface{}{"gte": ErrorLoggingLevel}},
+					},
+					{
+						Exists: &ExistsCondition{
+							Field: "issue_type",
+						},
+					},
+					{
+						Wildcard: map[string]interface{}{"issue_type": "ti*"},
+					},
+				},
+				Should: []Condition{
+					{
+						Term: map[string]TermCondition{"is_auto_analyzed": {"false", NewBoost(1.0)}},
+					},
+				},
+			},
+		}}
+	switch request.Conf.Mode {
+	case "launchName":
+		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
+			Term: map[string]TermCondition{"launch_name": {Value: request.LaunchName}},
+		})
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, "100%", logMessage))
+	case "currentLaunch":
+		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
+			Term: map[string]TermCondition{"launch_id": {Value: request.LaunchId}},
+		})
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, "100%", logMessage))
+	case "filter":
+		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
+			Terms: map[string][]int64{"launch_id": request.FilteredLaunchIds},
+		})
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, "100%", logMessage))
 	}
 
 	return q
@@ -576,6 +674,7 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 	}
 
 	rq, err := http.NewRequest(method, url, rdr)
+	log.Debugf("Request to ES - method: %q;\n url: %q;\n body: %v", method, url, rdr)
 	if err != nil {
 		return nil, errors.Wrap(err, "Cannot build request to ES")
 	}
@@ -600,6 +699,8 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 		log.Errorf("ES communication error. Status code %d, Body %s", rs.StatusCode, body)
 		return nil, errors.New(body)
 	}
+
+	log.Debugf("Response from ES - %v", string(rsBody))
 
 	return rsBody, nil
 }

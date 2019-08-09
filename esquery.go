@@ -37,6 +37,7 @@ type BoolCondition struct {
 type Condition struct {
 	Wildcard     map[string]interface{}   `json:"wildcard,omitempty"`
 	Term         map[string]TermCondition `json:"term,omitempty"`
+	Terms        map[string][]int64       `json:"terms,omitempty"`
 	Range        map[string]interface{}   `json:"range,omitempty"`
 	Exists       *ExistsCondition         `json:"exists,omitempty"`
 	MoreLikeThis *MoreLikeThisCondition   `json:"more_like_this,omitempty"`

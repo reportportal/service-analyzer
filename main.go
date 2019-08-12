@@ -47,13 +47,14 @@ type (
 	//AppConfig is the application configuration
 	AppConfig struct {
 		*SearchConfig
-		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
+		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://localhost:9200"`
 		LogLevel string   `env:"LOGGING_LEVEL" envDefault:"DEBUG"`
-		//AmqpURL  string   `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@localhost:5672/"`
-		AmqpURL          string `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@rabbitmq:5672"`
-		AmqpExchangeName string `env:"AMQP_EXCHANGE_NAME" envDefault:"analyzer"`
-		AnalyzerPriority int    `env:"ANALYZER_PRIORITY" envDefault:"1"`
-		AnalyzerIndex    bool   `env:"ANALYZER_INDEX" envDefault:"true"`
+		AmqpURL  string   `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@localhost:5672/"`
+		//AmqpURL          string `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@rabbitmq:5672"`
+		AmqpExchangeName  string `env:"AMQP_EXCHANGE_NAME" envDefault:"analyzer"`
+		AnalyzerPriority  int    `env:"ANALYZER_PRIORITY" envDefault:"1"`
+		AnalyzerIndex     bool   `env:"ANALYZER_INDEX" envDefault:"true"`
+		AnalyzerLogSearch bool   `env:"ANALYZER_LOG_SEARCH" envDefault:"true"`
 	}
 
 	//SearchConfig specified details of queries to elastic search
@@ -172,6 +173,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	var analyzeQueue = "analyze"
 	var deleteQueue = "delete"
 	var clearQueue = "clean"
+	var searchQueue = "search"
 
 	err := client.DoOnChannel(func(ch *amqp.Channel) error {
 		log.Infof("ExchangeName: %s", cfg.AmqpExchangeName)
@@ -184,10 +186,11 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 			false,                // internal
 			false,                // noWait
 			amqp.Table(map[string]interface{}{
-				"analyzer":          cfg.AmqpExchangeName,
-				"analyzer_index":    cfg.AnalyzerIndex,
-				"analyzer_priority": cfg.AnalyzerPriority,
-			}), // arguments
+				"analyzer":            cfg.AmqpExchangeName,
+				"analyzer_index":      cfg.AnalyzerIndex,
+				"analyzer_priority":   cfg.AnalyzerPriority,
+				"analyzer_log_search": cfg.AnalyzerLogSearch,
+			}),                   // arguments
 		)
 		if err != nil {
 			return errors.Wrap(err, "Failed to declare a exchange")
@@ -207,6 +210,10 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 			return err
 		}
 		err = bindQueue(ch, clearQueue, cfg.AmqpExchangeName)
+		if err != nil {
+			return err
+		}
+		err = bindQueue(ch, searchQueue, cfg.AmqpExchangeName)
 		if err != nil {
 			return err
 		}
@@ -267,6 +274,13 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 			log.Error(err)
 		}
 	}()
+
+	go client.Receive(ctx, searchQueue, false, true, false, false,
+		func(d amqp.Delivery) error {
+			return client.DoOnChannel(func(channel *amqp.Channel) error {
+				return handleSearchRequest(channel, d, h.SearchLogs)
+			})
+		})
 
 	return nil
 }

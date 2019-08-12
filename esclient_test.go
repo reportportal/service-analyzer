@@ -346,14 +346,14 @@ func TestAnalyzeLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "GET",
-					uri:    "/2/log/_search",
+					uri:    "/2/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(NoHitsSearchRs),
 					status: http.StatusOK,
 				},
 				{
 					method: "GET",
-					uri:    "/2/log/_search",
+					uri:    "/2/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(NoHitsSearchRs),
 					status: http.StatusOK,
@@ -365,14 +365,14 @@ func TestAnalyzeLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "GET",
-					uri:    "/2/log/_search",
+					uri:    "/2/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(NoHitsSearchRs),
 					status: http.StatusOK,
 				},
 				{
 					method: "GET",
-					uri:    "/2/log/_search",
+					uri:    "/2/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(OneHitSearchRs),
 					status: http.StatusOK,
@@ -385,14 +385,14 @@ func TestAnalyzeLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "GET",
-					uri:    "/2/log/_search",
+					uri:    "/2/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(OneHitSearchRs),
 					status: http.StatusOK,
 				},
 				{
 					method: "GET",
-					uri:    "/2/log/_search",
+					uri:    "/2/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(TwoHitsSearchRs),
 					status: http.StatusOK,
@@ -405,14 +405,14 @@ func TestAnalyzeLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "GET",
-					uri:    "/2/log/_search",
+					uri:    "/2/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(TwoHitsSearchRs),
 					status: http.StatusOK,
 				},
 				{
 					method: "GET",
-					uri:    "/2/log/_search",
+					uri:    "/2/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(ThreeHitsSearchRs),
 					status: http.StatusOK,
@@ -425,14 +425,14 @@ func TestAnalyzeLogs(t *testing.T) {
 			calls: []ServerCall{
 				{
 					method: "GET",
-					uri:    "/2/log/_search",
+					uri:    "/2/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(NoHitsSearchRs),
 					status: http.StatusOK,
 				},
 				{
 					method: "GET",
-					uri:    "/2/log/_search",
+					uri:    "/2/_search",
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(ThreeHitsSearchRs),
 					status: http.StatusOK,

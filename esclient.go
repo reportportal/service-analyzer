@@ -32,9 +32,6 @@ import (
 //ErrorLoggingLevel is integer representation of ERROR logging level
 const ErrorLoggingLevel int = 40000
 
-//indexType is type of index in ES
-const indexType string = "log"
-
 // ESClient interface
 type ESClient interface {
 	ListIndices() ([]Index, error)
@@ -45,6 +42,7 @@ type ESClient interface {
 	IndexLogs(launches []Launch) (*BulkResponse, error)
 	DeleteLogs(ci *CleanIndex) (*Response, error)
 	AnalyzeLogs(launches []Launch) ([]AnalysisResult, error)
+	SearchLogs(request SearchLogs) ([]int64, error)
 
 	Healthy() bool
 
@@ -54,7 +52,6 @@ type ESClient interface {
 }
 
 // Response struct
-//nolint:unused
 type Response struct {
 	Acknowledged bool `json:"acknowledged,omitempty"`
 	Error        struct {
@@ -73,7 +70,6 @@ type BulkResponse struct {
 	Took   int  `json:"took,omitempty"`
 	Errors bool `json:"errors,omitempty"`
 	Items  []struct {
-		//nolint:unused
 		Index struct {
 			Index   string `json:"_index,omitempty"`
 			Type    string `json:"_type,omitempty"`
@@ -94,12 +90,10 @@ type Launch struct {
 	LaunchName string       `json:"launchName,omitempty"`
 	Conf       AnalyzerConf `json:"analyzerConfig"`
 	TestItems  []struct {
-		TestItemID int64  `json:"testItemId,required" validate:"required"`
-		UniqueID   string `json:"uniqueId,required" validate:"required"`
-		//nolint:unused
-		IsAutoAnalyzed bool   `json:"isAutoAnalyzed,required" validate:"required"`
-		IssueType      string `json:"issueType,omitempty"`
-		//nolint:unused
+		TestItemID        int64  `json:"testItemId,required" validate:"required"`
+		UniqueID          string `json:"uniqueId,required" validate:"required"`
+		IsAutoAnalyzed    bool   `json:"isAutoAnalyzed,required" validate:"required"`
+		IssueType         string `json:"issueType,omitempty"`
 		OriginalIssueType string `json:"originalIssueType,omitempty"`
 		Logs              []struct {
 			LogID    int64  `json:"logId,required" validate:"required"`
@@ -138,16 +132,20 @@ type Index struct {
 type SearchResult struct {
 	Took     int  `json:"took,omitempty"`
 	TimedOut bool `json:"timed_out,omitempty"`
-	//nolint:unused
-	Hits struct {
-		Total    int     `json:"total,omitempty"`
+	Hits     struct {
+		Total    Total   `json:"total,omitempty"`
 		MaxScore float64 `json:"max_score,omitempty"`
 		Hits     []Hit   `json:"hits,omitempty"`
 	} `json:"hits,omitempty"`
 }
 
+// Total struct
+type Total struct {
+	Value    int    `json:"value,omitempty"`
+	Relation string `json:"relation,omitempty"`
+}
+
 //Hit is a single result from search index
-//nolint:unused
 type Hit struct {
 	Index  string  `json:"_index,omitempty"`
 	Type   string  `json:"_type,omitempty"`
@@ -175,6 +173,23 @@ type CleanIndex struct {
 	Project int64   `json:"project,required" validate:"required"`
 }
 
+//Search logs request
+type SearchLogs struct {
+	LaunchId          int64           `json:"launchId,omitempty"`
+	LaunchName        string          `json:"launchName,omitempty"`
+	ItemId            int64           `json:"itemId,omitempty"`
+	ProjectId         int64           `json:"projectId,omitempty"`
+	FilteredLaunchIds []int64         `json:"filteredLaunchIds,omitempty"`
+	LogMessages       []string        `json:"logMessages,omitempty"`
+	Conf              SearchLogConfig `json:"searchConfig"`
+}
+
+//Search logs config
+type SearchLogConfig struct {
+	Mode     string `json:"searchMode,omitempty"`
+	LogLines int    `json:"numberOfLogLines,omitempty"`
+}
+
 type client struct {
 	hosts     []string
 	re        *regexp.Regexp
@@ -187,7 +202,7 @@ func NewClient(hosts []string, searchCfg *SearchConfig) ESClient {
 	return &client{
 		hosts:     hosts,
 		searchCfg: searchCfg,
-		re:        regexp.MustCompile(`\d+`),
+		re:        regexp.MustCompile("\\d+"),
 		hc:        &http.Client{},
 	}
 }
@@ -232,30 +247,28 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 			"number_of_shards": 1,
 		},
 		"mappings": map[string]interface{}{
-			"log": map[string]interface{}{
-				"properties": map[string]interface{}{
-					"test_item": map[string]interface{}{
-						"type": "keyword",
-					},
-					"issue_type": map[string]interface{}{
-						"type": "keyword",
-					},
-					"message": map[string]interface{}{
-						"type":     "text",
-						"analyzer": "standard",
-					},
-					"log_level": map[string]interface{}{
-						"type": "integer",
-					},
-					"launch_name": map[string]interface{}{
-						"type": "keyword",
-					},
-					"unique_id": map[string]interface{}{
-						"type": "keyword",
-					},
-					"is_auto_analyzed": map[string]interface{}{
-						"type": "keyword",
-					},
+			"properties": map[string]interface{}{
+				"test_item": map[string]interface{}{
+					"type": "keyword",
+				},
+				"issue_type": map[string]interface{}{
+					"type": "keyword",
+				},
+				"message": map[string]interface{}{
+					"type":     "text",
+					"analyzer": "standard",
+				},
+				"log_level": map[string]interface{}{
+					"type": "integer",
+				},
+				"launch_name": map[string]interface{}{
+					"type": "keyword",
+				},
+				"unique_id": map[string]interface{}{
+					"type": "keyword",
+				},
+				"is_auto_analyzed": map[string]interface{}{
+					"type": "keyword",
 				},
 			},
 		},
@@ -300,7 +313,6 @@ func (c *client) DeleteLogs(ci *CleanIndex) (*Response, error) {
 			"delete": map[string]interface{}{
 				"_id":    id,
 				"_index": ci.Project,
-				"_type":  indexType,
 			},
 		}
 	}
@@ -323,7 +335,6 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 					"index": map[string]interface{}{
 						"_id":    l.LogID,
 						"_index": lc.Project,
-						"_type":  indexType,
 					},
 				}
 
@@ -363,7 +374,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 
 	result := []AnalysisResult{}
 	for _, lc := range launches {
-		url := c.buildURL(strconv.FormatInt(lc.Project, 10), "log", "_search")
+		url := c.buildURL(strconv.FormatInt(lc.Project, 10), "_search")
 
 		for _, ti := range lc.TestItems {
 			issueTypes := make(map[string]*score)
@@ -371,7 +382,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 			for _, l := range ti.Logs {
 				message := c.sanitizeText(firstLines(l.Message, lc.Conf.LogLines))
 
-				query := c.buildQuery(lc, ti.UniqueID, message)
+				query := c.buildAnalyzeQuery(lc, ti.UniqueID, message)
 
 				rs := &SearchResult{}
 				err := c.sendOpRequest(http.MethodGet, url, rs, query)
@@ -408,6 +419,37 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 	return result, nil
 }
 
+func (c *client) SearchLogs(request SearchLogs) ([]int64, error) {
+	set := make(map[int64]bool)
+	for _, message := range request.LogMessages {
+		url := c.buildURL(strconv.FormatInt(request.ProjectId, 10), "_search")
+		sanitizedMsg := c.sanitizeText(firstLines(message, request.Conf.LogLines))
+		query := c.buildSearchQuery(request, sanitizedMsg)
+
+		response := &SearchResult{}
+		err := c.sendOpRequest(http.MethodGet, url, response, query)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		for _, bla := range response.Hits.Hits {
+			logIndex, err := strconv.ParseInt(bla.ID, 10, 64)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			set[logIndex] = true
+		}
+	}
+	keys := make([]int64, len(set))
+
+	i := 0
+	for k := range set {
+		keys[i] = k
+		i++
+	}
+
+	return keys, nil
+}
+
 func (c *client) createIndexIfNotExists(indexName string) error {
 
 	exists, err := c.IndexExists(indexName)
@@ -428,7 +470,7 @@ func (c *client) buildURL(pathElements ...string) string {
 	return c.hosts[0] + "/" + strings.Join(pathElements, "/")
 }
 
-func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interface{} {
+func (c *client) buildAnalyzeQuery(launch Launch, uniqueID, logMessage string) interface{} {
 	minDocFreq := launch.Conf.MinDocFreq
 	if 0 == minDocFreq {
 		minDocFreq = c.searchCfg.MinDocFreq
@@ -449,7 +491,7 @@ func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interfac
 		Query: &EsQuery{
 			Bool: &BoolCondition{
 				MustNot: &Condition{
-					Wildcard: map[string]interface{}{"issue_type": "TI*"},
+					Wildcard: map[string]interface{}{"issue_type": "ti*"},
 				},
 				Must: []Condition{
 					{
@@ -492,6 +534,55 @@ func (c *client) buildQuery(launch Launch, uniqueID, logMessage string) interfac
 	return q
 }
 
+func (c *client) buildSearchQuery(request SearchLogs, logMessage string) interface{} {
+	q := EsQueryRQ{
+		Size: 10,
+		Query: &EsQuery{
+			Bool: &BoolCondition{
+				MustNot: &Condition{
+					Term: map[string]TermCondition{"test_item": {request.ItemId, NewBoost(1.0)}},
+				},
+				Must: []Condition{
+					{
+						Range: map[string]interface{}{"log_level": map[string]interface{}{"gte": ErrorLoggingLevel}},
+					},
+					{
+						Exists: &ExistsCondition{
+							Field: "issue_type",
+						},
+					},
+					{
+						Wildcard: map[string]interface{}{"issue_type": "ti*"},
+					},
+				},
+				Should: []Condition{
+					{
+						Term: map[string]TermCondition{"is_auto_analyzed": {"false", NewBoost(1.0)}},
+					},
+				},
+			},
+		}}
+	switch request.Conf.Mode {
+	case "launchName":
+		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
+			Term: map[string]TermCondition{"launch_name": {Value: request.LaunchName}},
+		})
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, "100%", logMessage))
+	case "currentLaunch":
+		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
+			Term: map[string]TermCondition{"launch_id": {Value: request.LaunchId}},
+		})
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, "100%", logMessage))
+	case "filter":
+		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
+			Terms: map[string][]int64{"launch_id": request.FilteredLaunchIds},
+		})
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, "100%", logMessage))
+	}
+
+	return q
+}
+
 func (c *client) buildMoreLikeThis(minDocFreq, minTermFreq float64, minShouldMatch, logMessage string) Condition {
 	return Condition{
 		MoreLikeThis: &MoreLikeThisCondition{
@@ -512,7 +603,7 @@ type score struct {
 }
 
 func calculateScores(rs *SearchResult, k int, scores map[string]*score) {
-	if rs.Hits.Total > 0 {
+	if rs.Hits.Total.Value > 0 {
 		n := len(rs.Hits.Hits)
 		if n < k {
 			k = n
@@ -583,6 +674,7 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 	}
 
 	rq, err := http.NewRequest(method, url, rdr)
+	log.Debugf("Request to ES - method: %q;\n url: %q;\n body: %v", method, url, rdr)
 	if err != nil {
 		return nil, errors.Wrap(err, "Cannot build request to ES")
 	}
@@ -607,6 +699,8 @@ func (c *client) sendRequest(method, url string, bodies ...interface{}) ([]byte,
 		log.Errorf("ES communication error. Status code %d, Body %s", rs.StatusCode, body)
 		return nil, errors.New(body)
 	}
+
+	log.Debugf("Response from ES - %v", string(rsBody))
 
 	return rsBody, nil
 }

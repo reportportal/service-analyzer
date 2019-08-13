@@ -6,7 +6,7 @@ addons:
       - docker-ce
 
 script:
-  - make checkstyle test build-image VERSION=`cat VERSION`-$TRAVIS_BUILD_NUMBER
+  - make get-build-deps checkstyle test build-image VERSION=`cat VERSION`-$TRAVIS_BUILD_NUMBER
 
 notifications:
   slack: reportportal-dev:fl6xWHVQp1jvsMmCJxYW9YKP

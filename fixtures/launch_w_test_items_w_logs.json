@@ -6,7 +6,7 @@
         {
             "uniqueId": "unique1",
             "testItemId": 2,
-            "issueType": "TI001",
+            "issueType": "ti001",
             "logs": [
                 {
                   "logId": 1,

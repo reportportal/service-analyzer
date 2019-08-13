@@ -175,10 +175,10 @@ type CleanIndex struct {
 
 //Search logs request
 type SearchLogs struct {
-	LaunchId          int64           `json:"launchId,omitempty"`
+	LaunchID          int64           `json:"launchId,omitempty"`
 	LaunchName        string          `json:"launchName,omitempty"`
-	ItemId            int64           `json:"itemId,omitempty"`
-	ProjectId         int64           `json:"projectId,omitempty"`
+	ItemID            int64           `json:"itemId,omitempty"`
+	ProjectID         int64           `json:"projectId,omitempty"`
 	FilteredLaunchIds []int64         `json:"filteredLaunchIds,omitempty"`
 	LogMessages       []string        `json:"logMessages,omitempty"`
 	Conf              SearchLogConfig `json:"searchConfig"`
@@ -202,7 +202,7 @@ func NewClient(hosts []string, searchCfg *SearchConfig) ESClient {
 	return &client{
 		hosts:     hosts,
 		searchCfg: searchCfg,
-		re:        regexp.MustCompile("\\d+"),
+		re:        regexp.MustCompile(`\d+`),
 		hc:        &http.Client{},
 	}
 }
@@ -291,7 +291,7 @@ func (c *client) IndexExists(name string) (bool, error) {
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
-
+	defer rs.Body.Close()
 	return rs.StatusCode == http.StatusOK, nil
 }
 
@@ -422,7 +422,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 func (c *client) SearchLogs(request SearchLogs) ([]int64, error) {
 	set := make(map[int64]bool)
 	for _, message := range request.LogMessages {
-		url := c.buildURL(strconv.FormatInt(request.ProjectId, 10), "_search")
+		url := c.buildURL(strconv.FormatInt(request.ProjectID, 10), "_search")
 		sanitizedMsg := c.sanitizeText(firstLines(message, request.Conf.LogLines))
 		query := c.buildSearchQuery(request, sanitizedMsg)
 
@@ -540,7 +540,7 @@ func (c *client) buildSearchQuery(request SearchLogs, logMessage string) interfa
 		Query: &EsQuery{
 			Bool: &BoolCondition{
 				MustNot: &Condition{
-					Term: map[string]TermCondition{"test_item": {request.ItemId, NewBoost(1.0)}},
+					Term: map[string]TermCondition{"test_item": {request.ItemID, NewBoost(1.0)}},
 				},
 				Must: []Condition{
 					{
@@ -570,7 +570,7 @@ func (c *client) buildSearchQuery(request SearchLogs, logMessage string) interfa
 		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, "100%", logMessage))
 	case "currentLaunch":
 		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
-			Term: map[string]TermCondition{"launch_id": {Value: request.LaunchId}},
+			Term: map[string]TermCondition{"launch_id": {Value: request.LaunchID}},
 		})
 		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, "100%", logMessage))
 	case "filter":
@@ -616,7 +616,7 @@ func calculateScores(rs *SearchResult, k int, scores map[string]*score) {
 			totalScore += h.Score
 
 			//find the hit with highest score for each defect type.
-			//item from the hit will be used as most relevant of request is analysed successfully
+			//item from the hit will be used as most relevant of request is analyzed successfully
 			if typeScore, ok := scores[h.Source.IssueType]; ok {
 				if h.Score > typeScore.mrHit.Score {
 					typeScore.mrHit = h

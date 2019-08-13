@@ -62,7 +62,7 @@ func buildDemoQuery(searchCfg *SearchConfig, mode SearchMode, launchName, unique
 			"bool": map[string]interface{}{
 				"must_not": map[string]interface{}{
 					"wildcard": map[string]interface{}{
-						"issue_type": "TI*",
+						"issue_type": "ti*",
 					},
 				},
 				"must": []interface{}{

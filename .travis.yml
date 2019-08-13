@@ -8,7 +8,6 @@ addons:
 script:
   - make build-image VERSION=`cat VERSION`-$TRAVIS_BUILD_NUMBER
 
-
 notifications:
   slack: reportportal-dev:fl6xWHVQp1jvsMmCJxYW9YKP
 

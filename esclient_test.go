@@ -514,17 +514,17 @@ func Test_findNth(t *testing.T) {
 		want int
 	}{
 		{
-			name: "one occurence",
+			name: "one occurrence",
 			args: args{str: "search", f: "se", n: 1},
 			want: 0,
 		},
 		{
-			name: "multiple occurence",
+			name: "multiple occurrence",
 			args: args{str: "search search", f: "se", n: 2},
 			want: 7,
 		},
 		{
-			name: "multiple occurence - third",
+			name: "multiple occurrence - third",
 			args: args{str: "ok ok ok ok ok", f: "k", n: 3},
 			want: 7,
 		},
@@ -535,6 +535,7 @@ func Test_findNth(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			if got := findNth(tt.args.str, tt.args.f, tt.args.n); got != tt.want {
 				t.Errorf("findNth() = %v, want %v", got, tt.want)
@@ -568,6 +569,7 @@ hello`, n: 2},
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			if got := firstLines(tt.args.str, tt.args.n); got != tt.want {
 				t.Errorf("firstLines() = %v, want %v", got, tt.want)

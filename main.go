@@ -175,6 +175,8 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	var clearQueue = "clean"
 	var searchQueue = "search"
 
+	var queues = [5]string{indexQueue, analyzeQueue, deleteQueue, clearQueue, searchQueue}
+
 	err := client.DoOnChannel(func(ch *amqp.Channel) error {
 		log.Infof("ExchangeName: %s", cfg.AmqpExchangeName)
 
@@ -192,30 +194,17 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 				"analyzer_log_search": cfg.AnalyzerLogSearch,
 			}),                   // arguments
 		)
+
 		if err != nil {
 			return errors.Wrap(err, "Failed to declare a exchange")
 		}
 		log.Infof("Exchange '%s' has been declared", cfg.AmqpExchangeName)
 
-		err = bindQueue(ch, indexQueue, cfg.AmqpExchangeName)
-		if err != nil {
-			return err
-		}
-		err = bindQueue(ch, analyzeQueue, cfg.AmqpExchangeName)
-		if err != nil {
-			return err
-		}
-		err = bindQueue(ch, deleteQueue, cfg.AmqpExchangeName)
-		if err != nil {
-			return err
-		}
-		err = bindQueue(ch, clearQueue, cfg.AmqpExchangeName)
-		if err != nil {
-			return err
-		}
-		err = bindQueue(ch, searchQueue, cfg.AmqpExchangeName)
-		if err != nil {
-			return err
+		for _, queue := range queues {
+			err := bindQueue(ch, queue, cfg.AmqpExchangeName)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -275,12 +264,16 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 		}
 	}()
 
-	go client.Receive(ctx, searchQueue, false, true, false, false,
-		func(d amqp.Delivery) error {
-			return client.DoOnChannel(func(channel *amqp.Channel) error {
-				return handleSearchRequest(channel, d, h.SearchLogs)
-			})
-		})
+	go func() {
+		if err := client.Receive(ctx, searchQueue, false, true, false, false,
+			func(d amqp.Delivery) error {
+				return client.DoOnChannel(func(channel *amqp.Channel) error {
+					return handleSearchRequest(channel, d, h.SearchLogs)
+				})
+			}); err != nil {
+			log.Error(err)
+		}
+	}()
 
 	return nil
 }

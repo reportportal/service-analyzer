@@ -192,7 +192,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 				"analyzer_index":      cfg.AnalyzerIndex,
 				"analyzer_priority":   cfg.AnalyzerPriority,
 				"analyzer_log_search": cfg.AnalyzerLogSearch,
-			}),                   // arguments
+			}), // arguments
 		)
 
 		if err != nil {

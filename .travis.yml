@@ -6,8 +6,7 @@ addons:
       - docker-ce
 
 script:
-  - make build-image VERSION=`cat VERSION`-$TRAVIS_BUILD_NUMBER
-
+  - make ckeckstyle test build-image VERSION=`cat VERSION`-$TRAVIS_BUILD_NUMBER
 
 notifications:
   slack: reportportal-dev:fl6xWHVQp1jvsMmCJxYW9YKP

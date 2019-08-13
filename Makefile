@@ -7,7 +7,7 @@ GO = go
 BINARY_DIR=bin
 RELEASE_DIR=release
 
-BUILD_DEPS:= github.com/alecthomas/gometalinter github.com/avarabyeu/releaser
+BUILD_DEPS:= github.com/golangci/golangci-lint/cmd/golangci-lint@v1.17.1 github.com/avarabyeu/releaser
 GODIRS_NOVENDOR = $(shell go list ./... | grep -v /vendor/)
 GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 PACKAGE_COMMONS=github.com/reportportal/commons-go
@@ -31,7 +31,7 @@ test:
 	$(GO) test ${GODIRS_NOVENDOR}
 
 checkstyle:
-	docker run --rm -v ${PWD}:/app -w="/app" golangci/golangci-lint:v1.17 golangci-lint run --deadline 10m
+	golangci-lint run
 
 fmt:
 	gofmt -l -w -s ${GOFILES_NOVENDOR}

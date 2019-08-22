@@ -8,7 +8,6 @@ node {
 
         stage('Checkout'){
                 checkout scm
-                sh 'git checkout v5'
                 sh 'git pull'
             }
 
@@ -18,7 +17,6 @@ node {
                         sh 'go version'
                         sh 'make release v=${RELEASE_VERSION}'
                         sh 'file release/service-analyzer_linux_amd64'
-
                 }
 
             }

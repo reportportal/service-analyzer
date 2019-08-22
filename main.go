@@ -19,6 +19,7 @@ import (
 	"context"
 	"github.com/caarlos0/env"
 	"github.com/pkg/errors"
+	"github.com/reportportal/commons-go/commons"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"github.com/x-cray/logrus-prefixed-formatter"
@@ -193,6 +194,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 				"analyzer_index":      cfg.AnalyzerIndex,
 				"analyzer_priority":   cfg.AnalyzerPriority,
 				"analyzer_log_search": cfg.AnalyzerLogSearch,
+				"version":             commons.GetBuildInfo().Version,
 			}), // arguments
 		)
 

@@ -21,3 +21,4 @@ vendor/*/
 # Intellij IDEA
 .idea/
 *.iml
+release/

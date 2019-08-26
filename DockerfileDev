@@ -1,4 +1,6 @@
-FROM golang:1.12.7
+FROM golang:1.12.9-alpine
+
+RUN apk --no-cache add build-base git
 
 WORKDIR /go/src/github.com/reportportal/service-analyzer/
 ARG version

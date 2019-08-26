@@ -11,7 +11,11 @@ podTemplate(
                 containerTemplate(name: 'docker', image: 'docker:dind', ttyEnabled: true, alwaysPullImage: true, privileged: true,
                         command: 'dockerd --host=unix:///var/run/docker.sock --host=tcp://0.0.0.0:2375 --storage-driver=overlay'),
                 //alpine image does not have make included
-                containerTemplate(name: 'golang', image: 'golang:1.12.7', ttyEnabled: true, command: 'cat'),
+                containerTemplate(name: 'golang', image: 'golang:1.12.7', ttyEnabled: true, command: 'cat',
+                        resourceRequestCpu: '500m',
+                        resourceLimitCpu: '800m',
+                        resourceRequestMemory: '2048Mi',
+                        resourceLimitMemory: '2048Mi'),
                 containerTemplate(name: 'kubectl', image: 'lachlanevenson/k8s-kubectl:v1.8.8', command: 'cat', ttyEnabled: true),
                 containerTemplate(name: 'helm', image: 'lachlanevenson/k8s-helm:latest', command: 'cat', ttyEnabled: true),
                 containerTemplate(name: 'httpie', image: 'blacktop/httpie', command: 'cat', ttyEnabled: true)

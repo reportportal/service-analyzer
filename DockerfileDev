@@ -9,4 +9,4 @@ WORKDIR /root/
 ADD ./bin/service-analyzer /
 
 EXPOSE 8080
-ENTRYPOINT ["/service-index"]
+ENTRYPOINT ["/service-analyzer"]

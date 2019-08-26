@@ -12,10 +12,8 @@ podTemplate(
                         command: 'dockerd --host=unix:///var/run/docker.sock --host=tcp://0.0.0.0:2375 --storage-driver=overlay'),
                 //alpine image does not have make included
                 containerTemplate(name: 'golang', image: 'golang:1.12.7', ttyEnabled: true, command: 'cat'),
-
                 containerTemplate(name: 'kubectl', image: 'lachlanevenson/k8s-kubectl:v1.8.8', command: 'cat', ttyEnabled: true),
                 containerTemplate(name: 'helm', image: 'lachlanevenson/k8s-helm:latest', command: 'cat', ttyEnabled: true),
-//                containerTemplate(name: 'yq', image: 'mikefarah/yq', command: 'cat', ttyEnabled: true)
                 containerTemplate(name: 'httpie', image: 'blacktop/httpie', command: 'cat', ttyEnabled: true)
         ],
         volumes: [
@@ -26,7 +24,7 @@ podTemplate(
 ) {
 
     node("${label}") {
-        def srvRepo = "quay.io/reportportal/service-index"
+        def srvRepo = "quay.io/reportportal/service-analyzer"
         def srvVersion = "BUILD-${env.BUILD_NUMBER}"
         def tag = "$srvRepo:$srvVersion"
 
@@ -84,25 +82,18 @@ podTemplate(
         }
 
         stage('Deploy to Dev') {
-//            container('yq') {
-//                dir('reportportal-ci/rp') {
-//                    sh "yq w -i values-ci.yml serviceindex.repository $srvRepo"
-//                    sh "yq w -i values-ci.yml serviceindex.tag $srvVersion"
-//                }
-//            }
-
             container('helm') {
                 dir('kubernetes/reportportal/v5') {
                     sh 'helm dependency update'
                 }
-                sh "helm upgrade --reuse-values --set serviceindex.repository=$srvRepo --set serviceindex.tag=$srvVersion --wait -f ./reportportal-ci/rp/values-ci.yml reportportal ./kubernetes/reportportal/v5"
+                sh "helm upgrade --reuse-values --set serviceanalyzer.repository=$srvRepo --set serviceanalyzer.tag=$srvVersion --wait -f ./reportportal-ci/rp/values-ci.yml reportportal ./kubernetes/reportportal/v5"
             }
         }
 
         stage('DVT Test') {
             def srvUrl
             container('kubectl') {
-                srvUrl = utils.getServiceEndpoint("reportportal", "index-0")
+                srvUrl = utils.getServiceEndpoint("reportportal", "analyzer-0")
             }
             if (srvUrl == null) {
                 error("Unable to retrieve service URL")

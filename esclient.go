@@ -567,17 +567,17 @@ func (c *client) buildSearchQuery(request SearchLogs, logMessage string) interfa
 		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
 			Term: map[string]TermCondition{"launch_name": {Value: request.LaunchName}},
 		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, "100%", logMessage))
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, c.searchCfg.SearchLogsMinShouldMatch, logMessage))
 	case "currentLaunch":
 		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
 			Term: map[string]TermCondition{"launch_id": {Value: request.LaunchID}},
 		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, "100%", logMessage))
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, c.searchCfg.SearchLogsMinShouldMatch, logMessage))
 	case "filter":
 		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
 			Terms: map[string][]int64{"launch_id": request.FilteredLaunchIds},
 		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, "100%", logMessage))
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, c.searchCfg.SearchLogsMinShouldMatch, logMessage))
 	}
 
 	return q

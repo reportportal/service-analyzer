@@ -22,6 +22,7 @@ podTemplate(
                         resourceLimitCpu: '500m',
                         resourceRequestMemory: '128Mi',
                         resourceLimitMemory: '256Mi'),
+                containerTemplate(name: 'yq', image: 'mikefarah/yq', command: 'cat', ttyEnabled: true),
                 containerTemplate(name: 'httpie', image: 'blacktop/httpie', command: 'cat', ttyEnabled: true)
         ],
         volumes: [

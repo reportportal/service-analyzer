@@ -36,7 +36,15 @@ podTemplate(
         def srvVersion = "BUILD-${env.BUILD_NUMBER}"
         def tag = "$srvRepo:$srvVersion"
 
+        /**
+         * General ReportPortal Kubernetes Configuration and Helm Chart
+         */
         def k8sDir = "kubernetes"
+        def k8sChartDir = "$k8sDir/reportportal/v5"
+
+        /**
+         * Jenkins utilities and environment Specific k8s configuration
+         */
         def ciDir = "reportportal-ci"
         def appDir = "app"
 
@@ -91,10 +99,15 @@ podTemplate(
 
         stage('Deploy to Dev') {
             container('helm') {
-                dir('kubernetes/reportportal/v5') {
+                def valsFile = "merged.yml"
+                container('yq') {
+                    sh "yq m -x $k8sChartDir/values.yaml $ciDir/rp/values-ci.yml > $valsFile"
+                }
+
+                dir(k8sChartDir) {
                     sh 'helm dependency update'
                 }
-                sh "helm upgrade --reuse-values --set serviceanalyzer.repository=$srvRepo --set serviceanalyzer.tag=$srvVersion --wait -f ./reportportal-ci/rp/values-ci.yml reportportal ./kubernetes/reportportal/v5"
+                sh "helm upgrade --reuse-values --set serviceanalyzer.repository=$srvRepo --set serviceanalyzer.tag=$srvVersion --wait -f $valsFile reportportal ./$k8sChartDir"
             }
         }
 

@@ -175,13 +175,13 @@ type CleanIndex struct {
 
 //Search logs request
 type SearchLogs struct {
-	LaunchID          int64           `json:"launchId,omitempty"`
-	LaunchName        string          `json:"launchName,omitempty"`
-	ItemID            int64           `json:"itemId,omitempty"`
-	ProjectID         int64           `json:"projectId,omitempty"`
-	FilteredLaunchIds []int64         `json:"filteredLaunchIds,omitempty"`
-	LogMessages       []string        `json:"logMessages,omitempty"`
-	Conf              SearchLogConfig `json:"searchConfig"`
+	LaunchID          int64    `json:"launchId,omitempty"`
+	LaunchName        string   `json:"launchName,omitempty"`
+	ItemID            int64    `json:"itemId,omitempty"`
+	ProjectID         int64    `json:"projectId,omitempty"`
+	FilteredLaunchIds []int64  `json:"filteredLaunchIds,omitempty"`
+	LogMessages       []string `json:"logMessages,omitempty"`
+	LogLines          int      `json:"logLines"`
 }
 
 //Search logs config
@@ -423,7 +423,7 @@ func (c *client) SearchLogs(request SearchLogs) ([]int64, error) {
 	set := make(map[int64]bool)
 	for _, message := range request.LogMessages {
 		url := c.buildURL(strconv.FormatInt(request.ProjectID, 10), "_search")
-		sanitizedMsg := c.sanitizeText(firstLines(message, request.Conf.LogLines))
+		sanitizedMsg := c.sanitizeText(firstLines(message, request.LogLines))
 		query := c.buildSearchQuery(request, sanitizedMsg)
 
 		response := &SearchResult{}
@@ -536,7 +536,6 @@ func (c *client) buildAnalyzeQuery(launch Launch, uniqueID, logMessage string) i
 
 func (c *client) buildSearchQuery(request SearchLogs, logMessage string) interface{} {
 	q := EsQueryRQ{
-		Size: 10,
 		Query: &EsQuery{
 			Bool: &BoolCondition{
 				MustNot: &Condition{
@@ -562,23 +561,11 @@ func (c *client) buildSearchQuery(request SearchLogs, logMessage string) interfa
 				},
 			},
 		}}
-	switch request.Conf.Mode {
-	case "launchName":
-		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
-			Term: map[string]TermCondition{"launch_name": {Value: request.LaunchName}},
-		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, c.searchCfg.SearchLogsMinShouldMatch, logMessage))
-	case "currentLaunch":
-		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
-			Term: map[string]TermCondition{"launch_id": {Value: request.LaunchID}},
-		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, c.searchCfg.SearchLogsMinShouldMatch, logMessage))
-	case "filter":
-		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
-			Terms: map[string][]int64{"launch_id": request.FilteredLaunchIds},
-		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, c.searchCfg.SearchLogsMinShouldMatch, logMessage))
-	}
+
+	q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
+		Terms: map[string][]int64{"launch_id": request.FilteredLaunchIds},
+	})
+	q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, c.searchCfg.SearchLogsMinShouldMatch, logMessage))
 
 	return q
 }

@@ -7,8 +7,8 @@ ENV APP_DOWNLOAD_URL https://dl.bintray.com/epam/reportportal/{{.version}}
 
 ADD ${APP_DOWNLOAD_URL}/service-analyzer_linux_amd64 /service-analyzer
 
-RUN chmod +x /service-analyzer
-
+RUN chmod +x /service-analyzer && \
+    apk add --no-cache ca-certificates
 
 EXPOSE 8080
 ENTRYPOINT ["/service-analyzer"]

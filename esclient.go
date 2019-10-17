@@ -431,8 +431,8 @@ func (c *client) SearchLogs(request SearchLogs) ([]int64, error) {
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		for _, bla := range response.Hits.Hits {
-			logIndex, err := strconv.ParseInt(bla.ID, 10, 64)
+		for _, log := range response.Hits.Hits {
+			logIndex, err := strconv.ParseInt(log.ID, 10, 64)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
@@ -536,6 +536,7 @@ func (c *client) buildAnalyzeQuery(launch Launch, uniqueID, logMessage string) i
 
 func (c *client) buildSearchQuery(request SearchLogs, logMessage string) interface{} {
 	q := EsQueryRQ{
+		Size: 500,
 		Query: &EsQuery{
 			Bool: &BoolCondition{
 				MustNot: &Condition{

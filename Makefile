@@ -25,7 +25,7 @@ help:
 	@echo "checkstyle - gofmt+golint+misspell"
 
 get-build-deps:
-	$(GO) get -u $(BUILD_DEPS)
+	$(GO) get $(BUILD_DEPS)
 
 test:
 	$(GO) test ${GODIRS_NOVENDOR}
@@ -61,7 +61,7 @@ clean:
 	if [ -d ${BINARY_DIR} ] ; then rm -r ${BINARY_DIR} ; fi
 	if [ -d 'build' ] ; then rm -r 'build' ; fi
 
-build-release: vendor get-build-deps checkstyle test
+build-release: vendor get-build-deps fmt checkstyle test
 	$(eval v := $(or $(v),$(shell releaser bump)))
 	# make sure latest version is bumped to file
 	releaser bump --version ${v}

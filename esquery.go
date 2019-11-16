@@ -55,6 +55,7 @@ type MoreLikeThisCondition struct {
 	MinDocFreq     float64  `json:"min_doc_freq,omitempty"`
 	MinTermFreq    float64  `json:"min_term_freq,omitempty"`
 	MinShouldMatch string   `json:"minimum_should_match,omitempty"`
+	MaxQueryTerms  float64  `json:"max_query_terms,omitempty"`
 }
 
 //TermCondition is a term condition model

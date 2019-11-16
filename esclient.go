@@ -245,6 +245,14 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 	body := map[string]interface{}{
 		"settings": map[string]interface{}{
 			"number_of_shards": 1,
+			"analysis": map[string]interface{}{
+				"analyzer": map[string]interface{}{
+					"standard_english_analyzer": map[string]interface{}{
+						"type": "standard",
+						"stopwords": "_english_"
+					}
+				}
+			}
 		},
 		"mappings": map[string]interface{}{
 			"properties": map[string]interface{}{
@@ -256,7 +264,7 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 				},
 				"message": map[string]interface{}{
 					"type":     "text",
-					"analyzer": "standard",
+					"analyzer": "standard_english_analyzer",
 				},
 				"log_level": map[string]interface{}{
 					"type": "integer",
@@ -331,6 +339,10 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 		for _, ti := range lc.TestItems {
 			for _, l := range ti.Logs {
 
+				if l.LogLevel < ErrorLoggingLevel {
+					continue;
+				}
+
 				op := map[string]interface{}{
 					"index": map[string]interface{}{
 						"_id":    l.LogID,
@@ -380,6 +392,11 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 			issueTypes := make(map[string]*score)
 
 			for _, l := range ti.Logs {
+
+				if l.LogLevel < ErrorLoggingLevel {
+					continue;
+				}
+
 				message := c.sanitizeText(firstLines(l.Message, lc.Conf.LogLines))
 
 				query := c.buildAnalyzeQuery(lc, ti.UniqueID, message)
@@ -513,22 +530,23 @@ func (c *client) buildAnalyzeQuery(launch Launch, uniqueID, logMessage string) i
 				},
 			},
 		}}
+
 	switch launch.Conf.Mode {
 	case SearchModeAll, SearchModeNotFound:
 		q.Query.Bool.Should = append(q.Query.Bool.Should, Condition{
 			Term: map[string]TermCondition{"launch_name": {launch.LaunchName, NewBoost(math.Abs(c.searchCfg.BoostLaunch))}},
 		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(minDocFreq, minTermFreq, minShouldMatch, logMessage))
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(minDocFreq, minTermFreq, c.searchCfg.MaxQueryTerms, minShouldMatch, logMessage))
 	case SearchModeLaunchName:
 		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
 			Term: map[string]TermCondition{"launch_name": {Value: launch.LaunchName}},
 		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(minDocFreq, minTermFreq, minShouldMatch, logMessage))
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(minDocFreq, minTermFreq, c.searchCfg.MaxQueryTerms, minShouldMatch, logMessage))
 	case SearchModeCurrentLaunch:
 		q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
 			Term: map[string]TermCondition{"launch_id": {Value: launch.LaunchID}},
 		})
-		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(float64(1), minTermFreq, minShouldMatch, logMessage))
+		q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(float64(1), minTermFreq, c.searchCfg.MaxQueryTerms, minShouldMatch, logMessage))
 	}
 
 	return q
@@ -566,19 +584,20 @@ func (c *client) buildSearchQuery(request SearchLogs, logMessage string) interfa
 	q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
 		Terms: map[string][]int64{"launch_id": request.FilteredLaunchIds},
 	})
-	q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, c.searchCfg.SearchLogsMinShouldMatch, logMessage))
+	q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, 50, c.searchCfg.SearchLogsMinShouldMatch, logMessage))
 
 	return q
 }
 
-func (c *client) buildMoreLikeThis(minDocFreq, minTermFreq float64, minShouldMatch, logMessage string) Condition {
+func (c *client) buildMoreLikeThis(minDocFreq, minTermFreq, maxQueryTerms float64, minShouldMatch, logMessage string) Condition {
 	return Condition{
 		MoreLikeThis: &MoreLikeThisCondition{
 			Fields:         []string{"message"},
 			Like:           logMessage,
 			MinDocFreq:     minDocFreq,
 			MinTermFreq:    minTermFreq,
-			MinShouldMatch: minShouldMatch,
+			MinShouldMatch: "5<"+minShouldMatch,
+			MaxQueryTerms:  maxQueryTerms
 		},
 	}
 }

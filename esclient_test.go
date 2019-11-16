@@ -44,6 +44,9 @@ const (
 	OneHitSearchRs         = "one_hit_search_rs.json"
 	TwoHitsSearchRs        = "two_hits_search_rs.json"
 	ThreeHitsSearchRs      = "three_hits_search_rs.json"
+	LaunchWTestItemsWLogsDifferentLogLevel  = "launch_w_test_items_w_logs_different_log_level.json"
+	IndexLogsRqDifferentLogLevel            = "index_logs_rq_different_log_level.json"
+	IndexLogsRsDifferentLogLevel            = "index_logs_rs_different_log_level.json"
 )
 
 type ServerCall struct {
@@ -309,6 +312,29 @@ func TestIndexLogs(t *testing.T) {
 			},
 			indexRq: getFixture(LaunchWTestItemsWLogs),
 		},
+		{
+			calls: []ServerCall{
+				{
+					method: "HEAD",
+					uri:    "/2",
+					status: http.StatusNotFound,
+				},
+				{
+					method: "PUT",
+					uri:    "/2",
+					rs:     getFixture(IndexCreatedRs),
+					status: http.StatusOK,
+				},
+				{
+					method: "PUT",
+					uri:    "/_bulk?refresh",
+					rq:     getFixture(IndexLogsRqDifferentLogLevel),
+					rs:     getFixture(IndexLogsRsDifferentLogLevel),
+					status: http.StatusOK,
+				},
+			},
+			indexRq: getFixture(LaunchWTestItemsWLogsDifferentLogLevel),
+		}
 	}
 
 	for _, test := range tests {
@@ -440,6 +466,19 @@ func TestAnalyzeLogs(t *testing.T) {
 			},
 			analyzeRq:     getFixture(LaunchWTestItemsWLogs),
 			expectedIssue: "PB001",
+		},
+		{
+			calls: []ServerCall{
+				{
+					method: "GET",
+					uri:    "/2/_search",
+					rq:     getFixture(SearchRq),
+					rs:     getFixture(TwoHitsSearchRs),
+					status: http.StatusOK,
+				}
+			},
+			analyzeRq:     getFixture(LaunchWTestItemsWLogsDifferentLogLevel),
+			expectedIssue: "AB001",
 		},
 	}
 

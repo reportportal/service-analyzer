@@ -22,7 +22,7 @@ podTemplate(
                         resourceLimitCpu: '500m',
                         resourceRequestMemory: '128Mi',
                         resourceLimitMemory: '256Mi'),
-                containerTemplate(name: 'yq', image: 'mikefarah/yq', command: 'cat', ttyEnabled: true),
+                // containerTemplate(name: 'yq', image: 'mikefarah/yq', command: 'cat', ttyEnabled: true),
                 containerTemplate(name: 'httpie', image: 'blacktop/httpie', command: 'cat', ttyEnabled: true)
         ],
         volumes: [
@@ -100,15 +100,15 @@ podTemplate(
 
         stage('Deploy to Dev') {
             container('helm') {
-                def valsFile = "merged.yml"
-                container('yq') {
-                    sh "yq m -x $k8sChartDir/values.yaml $ciDir/rp/values-ci.yml > $valsFile"
-                }
+                // def valsFile = "merged.yml"
+                // container('yq') {
+                //     sh "yq m -x $k8sChartDir/values.yaml $ciDir/rp/values-ci.yml > $valsFile"
+                // }
 
                 dir(k8sChartDir) {
                     sh 'helm dependency update'
                 }
-                sh "helm upgrade --reuse-values --set serviceanalyzer.repository=$srvRepo --set serviceanalyzer.tag=$srvVersion --wait -f $valsFile reportportal ./$k8sChartDir"
+                sh "helm upgrade --reuse-values --set serviceanalyzer.repository=$srvRepo --set serviceanalyzer.tag=$srvVersion --wait -f $ciDir/rp/values-ci.yml reportportal ./$k8sChartDir"
             }
         }
 

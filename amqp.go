@@ -64,6 +64,12 @@ func (a *AmqpClient) Receive(ctx context.Context, queue string, autoAck, exclusi
 
 func (a *AmqpClient) consumeQueue(ctx context.Context, queue string, autoAck, exclusive, noLocal, noWait bool, msgCallback func(amqp.Delivery) error) error {
 	return a.DoOnChannel(func(ch *amqp.Channel) error {
+
+		qos := ch.Qos(1, 0, false)
+		if qos != nil {
+			return errors.Wrapf(qos, "Failed to configure Qos")
+		}
+
 		msgs, cErr := ch.Consume(
 			queue,     // queue
 			"",        // consumer
@@ -75,11 +81,6 @@ func (a *AmqpClient) consumeQueue(ctx context.Context, queue string, autoAck, ex
 		)
 		if cErr != nil {
 			return errors.Wrap(cErr, "Failed to register a consumer")
-		}
-
-		cErr = ch.Qos(2, 0, false)
-		if cErr != nil {
-			return errors.Wrapf(cErr, "Failed to configure Qos")
 		}
 
 		if err := a.processMessages(ctx, msgs, msgCallback); nil != err {

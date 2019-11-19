@@ -77,6 +77,11 @@ func (a *AmqpClient) consumeQueue(ctx context.Context, queue string, autoAck, ex
 			return errors.Wrap(cErr, "Failed to register a consumer")
 		}
 
+		cErr = ch.Qos(2, 0, false)
+		if cErr != nil {
+			return errors.Wrapf(cErr, "Failed to configure Qos")
+		}
+
 		if err := a.processMessages(ctx, msgs, msgCallback); nil != err {
 			return err
 		}

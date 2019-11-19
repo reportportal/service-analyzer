@@ -158,11 +158,6 @@ func bindQueue(ch *amqp.Channel, name string, exchangeName string) error {
 	}
 	log.Infof("Queue '%s' has been declared", q.Name)
 
-	err = ch.Qos(2, 0, true)
-	if err != nil {
-		return errors.Wrapf(err, "Failed to declare a queue: %s", q.Name)
-	}
-
 	err = ch.QueueBind(
 		q.Name,       // queue name
 		name,         // routing key
@@ -172,6 +167,12 @@ func bindQueue(ch *amqp.Channel, name string, exchangeName string) error {
 	if err != nil {
 		return errors.Wrapf(err, "Failed to bind a queue: %s", q.Name)
 	}
+
+	err = ch.Qos(2, 0, false)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to declare a queue: %s", q.Name)
+	}
+
 	return nil
 }
 

@@ -225,7 +225,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	})
 
 	go func() {
-		if err := client.Receive(ctx, analyzeQueue, false, true, false, false,
+		if err := client.Receive(ctx, analyzeQueue, true, true, false, false,
 			func(d amqp.Delivery) error {
 				return client.DoOnChannel(func(channel *amqp.Channel) error {
 					return handleAmqpRequest(channel, d, h.AnalyzeLogs)
@@ -236,7 +236,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	}()
 
 	go func() {
-		if err := client.Receive(ctx, indexQueue, false, true, false, false,
+		if err := client.Receive(ctx, indexQueue, true, true, false, false,
 			func(d amqp.Delivery) error {
 				return client.DoOnChannel(func(channel *amqp.Channel) error {
 					return handleAmqpRequest(channel, d, h.IndexLaunches)
@@ -247,7 +247,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	}()
 
 	go func() {
-		if err := client.Receive(ctx, deleteQueue, false, true, false, false,
+		if err := client.Receive(ctx, deleteQueue, true, true, false, false,
 			func(d amqp.Delivery) error {
 				return client.DoOnChannel(func(channel *amqp.Channel) error {
 					return handleDeleteRequest(d, h)
@@ -258,7 +258,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	}()
 
 	go func() {
-		if err := client.Receive(ctx, clearQueue, false, true, false, false,
+		if err := client.Receive(ctx, clearQueue, true, true, false, false,
 			func(d amqp.Delivery) error {
 				return client.DoOnChannel(func(channel *amqp.Channel) error {
 					return handleCleanRequest(d, h)
@@ -269,7 +269,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	}()
 
 	go func() {
-		if err := client.Receive(ctx, searchQueue, false, true, false, false,
+		if err := client.Receive(ctx, searchQueue, true, true, false, false,
 			func(d amqp.Delivery) error {
 				return client.DoOnChannel(func(channel *amqp.Channel) error {
 					return handleSearchRequest(channel, d, h.SearchLogs)

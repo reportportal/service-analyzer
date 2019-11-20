@@ -149,7 +149,7 @@ func handleCleanRequest(d amqp.Delivery, h *RequestHandler) (err error) {
 	err = json.Unmarshal(d.Body, &ci)
 	if err != nil {
 		err = errors.WithStack(err)
-		return err
+		return
 	}
 
 	if err = validate.Struct(ci); nil != err {

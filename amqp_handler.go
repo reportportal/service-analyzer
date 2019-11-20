@@ -24,16 +24,26 @@ import (
 
 var validate = validator.New()
 
-func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler) error {
+func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler) (err error) {
+
+	defer func() {
+		if err == nil {
+			err = d.Ack(false)
+			return
+		}
+	}()
+
 	var launches []Launch
-	err := json.Unmarshal(d.Body, &launches)
+	err = json.Unmarshal(d.Body, &launches)
 	if err != nil {
-		return errors.WithStack(err)
+		err = errors.WithStack(err)
+		return
 	}
 
 	for i, l := range launches {
 		if err = validate.Struct(l); nil != err {
-			return errors.Wrapf(err, "Validation failed on Launch[%d]", i)
+			err = errors.Wrapf(err, "Validation failed on Launch[%d]", i)
+			return
 		}
 	}
 
@@ -44,16 +54,10 @@ func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler
 
 	rsBody, err := json.Marshal(rs)
 	if err != nil {
-		return err
+		return
 	}
 
-	err = d.Ack(true)
-
-	if err != nil {
-		return err
-	}
-
-	return ch.Publish(
+	err = ch.Publish(
 		"",        // exchange
 		d.ReplyTo, // routing key
 		false,     // mandatory
@@ -63,26 +67,38 @@ func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler
 			CorrelationId: d.CorrelationId,
 			Body:          rsBody,
 		})
+	return err
 }
 
-func handleSearchRequest(ch *amqp.Channel, d amqp.Delivery, h searchRequestHandler) error {
+func handleSearchRequest(ch *amqp.Channel, d amqp.Delivery, h searchRequestHandler) (err error) {
+
+	defer func() {
+		if err == nil {
+			err = d.Ack(false)
+			return
+		}
+	}()
+
 	var request SearchLogs
-	err := json.Unmarshal(d.Body, &request)
+	err = json.Unmarshal(d.Body, &request)
 	if err != nil {
-		return errors.WithStack(err)
+		err = errors.WithStack(err)
+		return
 	}
 
 	response, err := h(request)
 	if err != nil {
-		return errors.WithStack(err)
+		err = errors.WithStack(err)
+		return
 	}
 
 	rsBody, err := json.Marshal(response)
 	if err != nil {
-		return err
+		err = errors.WithStack(err)
+		return
 	}
 
-	return ch.Publish(
+	err = ch.Publish(
 		"",        // exchange
 		d.ReplyTo, // routing key
 		false,     // mandatory
@@ -92,36 +108,59 @@ func handleSearchRequest(ch *amqp.Channel, d amqp.Delivery, h searchRequestHandl
 			CorrelationId: d.CorrelationId,
 			Body:          rsBody,
 		})
+	return err
 }
 
-func handleDeleteRequest(d amqp.Delivery, h *RequestHandler) error {
+func handleDeleteRequest(d amqp.Delivery, h *RequestHandler) (err error) {
+
+	defer func() {
+		if err == nil {
+			err = d.Ack(false)
+			return
+		}
+	}()
+
 	var id int64
-	err := json.Unmarshal(d.Body, &id)
+	err = json.Unmarshal(d.Body, &id)
+
 	if err != nil {
-		return errors.WithStack(err)
+		err = errors.WithStack(err)
+		return
 	}
 
 	_, err = h.DeleteIndex(id)
 	if err != nil {
-		return errors.WithStack(err)
+		err = errors.WithStack(err)
+		return
 	}
 	return nil
 }
 
-func handleCleanRequest(d amqp.Delivery, h *RequestHandler) error {
+func handleCleanRequest(d amqp.Delivery, h *RequestHandler) (err error) {
+
+	defer func() {
+		if err == nil {
+			err = d.Ack(false)
+			return
+		}
+	}()
+
 	var ci CleanIndex
-	err := json.Unmarshal(d.Body, &ci)
+	err = json.Unmarshal(d.Body, &ci)
 	if err != nil {
-		return errors.WithStack(err)
+		err = errors.WithStack(err)
+		return err
 	}
 
 	if err = validate.Struct(ci); nil != err {
-		return errors.Wrapf(err, "Validation failed on CleanIndex")
+		err = errors.Wrapf(err, "Validation failed on CleanIndex")
+		return
 	}
 
 	_, err = h.CleanIndex(&ci)
 	if err != nil {
-		return errors.WithStack(err)
+		err = errors.WithStack(err)
+		return
 	}
 	return nil
 }

@@ -49,10 +49,10 @@ type (
 	AppConfig struct {
 		*SearchConfig
 		//ESHosts  []string `env:"ES_HOSTS" envDefault:"http://localhost:9200"`
-		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://localhost:9200"`
+		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
 		LogLevel string   `env:"LOGGING_LEVEL" envDefault:"DEBUG"`
 		//AmqpURL  string   `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@localhost:5672/"`
-		AmqpURL           string `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@localhost:5672"`
+		AmqpURL           string `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@rabbitmq:5672"`
 		AmqpExchangeName  string `env:"AMQP_EXCHANGE_NAME" envDefault:"analyzer"`
 		AnalyzerPriority  int    `env:"ANALYZER_PRIORITY" envDefault:"1"`
 		AnalyzerIndex     bool   `env:"ANALYZER_INDEX" envDefault:"true"`

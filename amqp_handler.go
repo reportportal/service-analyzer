@@ -66,7 +66,7 @@ func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler
 			CorrelationId: d.CorrelationId,
 			Body:          rsBody,
 		})
-	return
+	return nil
 }
 
 func handleSearchRequest(ch *amqp.Channel, d amqp.Delivery, h searchRequestHandler) error {

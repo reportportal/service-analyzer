@@ -47,6 +47,12 @@ func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler
 		return err
 	}
 
+	err = d.Ack(true)
+
+	if err != nil {
+		return err
+	}
+
 	return ch.Publish(
 		"",        // exchange
 		d.ReplyTo, // routing key

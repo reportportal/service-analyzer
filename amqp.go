@@ -64,7 +64,6 @@ func (a *AmqpClient) Receive(ctx context.Context, queue string, autoAck, exclusi
 
 func (a *AmqpClient) consumeQueue(ctx context.Context, queue string, autoAck, exclusive, noLocal, noWait bool, msgCallback func(amqp.Delivery) error) error {
 	return a.DoOnChannel(func(ch *amqp.Channel) error {
-
 		qos := ch.Qos(1, 0, false)
 		if qos != nil {
 			return errors.Wrapf(qos, "Failed to configure Qos")

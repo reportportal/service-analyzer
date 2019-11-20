@@ -49,10 +49,10 @@ type (
 	AppConfig struct {
 		*SearchConfig
 		//ESHosts  []string `env:"ES_HOSTS" envDefault:"http://localhost:9200"`
-		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
+		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://localhost:9200"`
 		LogLevel string   `env:"LOGGING_LEVEL" envDefault:"DEBUG"`
 		//AmqpURL  string   `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@localhost:5672/"`
-		AmqpURL           string `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@rabbitmq:5672"`
+		AmqpURL           string `env:"AMQP_URL" envDefault:"amqp://rabbitmq:rabbitmq@localhost:5672"`
 		AmqpExchangeName  string `env:"AMQP_EXCHANGE_NAME" envDefault:"analyzer"`
 		AnalyzerPriority  int    `env:"ANALYZER_PRIORITY" envDefault:"1"`
 		AnalyzerIndex     bool   `env:"ANALYZER_INDEX" envDefault:"true"`
@@ -226,7 +226,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	})
 
 	go func() {
-		if err := client.Receive(ctx, analyzeQueue, false, true, false, false,
+		if err := client.Receive(ctx, analyzeQueue, true, true, false, false,
 			func(d amqp.Delivery) error {
 				return client.DoOnChannel(func(channel *amqp.Channel) error {
 					return handleAmqpRequest(channel, d, h.AnalyzeLogs)
@@ -237,7 +237,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	}()
 
 	go func() {
-		if err := client.Receive(ctx, indexQueue, false, true, false, false,
+		if err := client.Receive(ctx, indexQueue, true, true, false, false,
 			func(d amqp.Delivery) error {
 				return client.DoOnChannel(func(channel *amqp.Channel) error {
 					return handleAmqpRequest(channel, d, h.IndexLaunches)
@@ -248,7 +248,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	}()
 
 	go func() {
-		if err := client.Receive(ctx, deleteQueue, false, true, false, false,
+		if err := client.Receive(ctx, deleteQueue, true, true, false, false,
 			func(d amqp.Delivery) error {
 				return client.DoOnChannel(func(channel *amqp.Channel) error {
 					return handleDeleteRequest(d, h)
@@ -259,7 +259,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	}()
 
 	go func() {
-		if err := client.Receive(ctx, clearQueue, false, true, false, false,
+		if err := client.Receive(ctx, clearQueue, true, true, false, false,
 			func(d amqp.Delivery) error {
 				return client.DoOnChannel(func(channel *amqp.Channel) error {
 					return handleCleanRequest(d, h)
@@ -270,7 +270,7 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	}()
 
 	go func() {
-		if err := client.Receive(ctx, searchQueue, false, true, false, false,
+		if err := client.Receive(ctx, searchQueue, true, true, false, false,
 			func(d amqp.Delivery) error {
 				return client.DoOnChannel(func(channel *amqp.Channel) error {
 					return handleSearchRequest(channel, d, h.SearchLogs)

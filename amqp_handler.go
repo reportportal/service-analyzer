@@ -26,13 +26,6 @@ var validate = validator.New()
 
 func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler) (err error) {
 
-	defer func() {
-		if err == nil {
-			err = d.Ack(false)
-			return
-		}
-	}()
-
 	var launches []Launch
 	err = json.Unmarshal(d.Body, &launches)
 	if err != nil {
@@ -72,13 +65,6 @@ func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler
 
 func handleSearchRequest(ch *amqp.Channel, d amqp.Delivery, h searchRequestHandler) (err error) {
 
-	defer func() {
-		if err == nil {
-			err = d.Ack(false)
-			return
-		}
-	}()
-
 	var request SearchLogs
 	err = json.Unmarshal(d.Body, &request)
 	if err != nil {
@@ -113,13 +99,6 @@ func handleSearchRequest(ch *amqp.Channel, d amqp.Delivery, h searchRequestHandl
 
 func handleDeleteRequest(d amqp.Delivery, h *RequestHandler) (err error) {
 
-	defer func() {
-		if err == nil {
-			err = d.Ack(false)
-			return
-		}
-	}()
-
 	var id int64
 	err = json.Unmarshal(d.Body, &id)
 
@@ -137,13 +116,6 @@ func handleDeleteRequest(d amqp.Delivery, h *RequestHandler) (err error) {
 }
 
 func handleCleanRequest(d amqp.Delivery, h *RequestHandler) (err error) {
-
-	defer func() {
-		if err == nil {
-			err = d.Ack(false)
-			return
-		}
-	}()
 
 	var ci CleanIndex
 	err = json.Unmarshal(d.Body, &ci)

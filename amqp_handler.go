@@ -34,7 +34,8 @@ func handleAmqpRequest(ch *amqp.Channel, d amqp.Delivery, handler requestHandler
 
 	defer func() {
 		if err == nil {
-			d.Ack(false)
+			err = d.Ack(false)
+			return
 		}
 	}()
 
@@ -108,7 +109,8 @@ func handleDeleteRequest(d amqp.Delivery, h *RequestHandler) (err error) {
 
 	defer func() {
 		if err == nil {
-			d.Ack(false)
+			err = d.Ack(false)
+			return
 		}
 	}()
 
@@ -117,7 +119,7 @@ func handleDeleteRequest(d amqp.Delivery, h *RequestHandler) (err error) {
 		err = errors.WithStack(err)
 		return err
 	}
-	return
+	return nil
 }
 
 func handleCleanRequest(d amqp.Delivery, h *RequestHandler) error {

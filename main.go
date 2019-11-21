@@ -68,6 +68,7 @@ type (
 		MinTermFreq              float64 `env:"ES_MIN_TERM_FREQ" envDefault:"1"`
 		MinShouldMatch           string  `env:"ES_MIN_SHOULD_MATCH" envDefault:"80%"`
 		SearchLogsMinShouldMatch string  `env:"ES_LOGS_MIN_SHOULD_MATCH" envDefault:"98%"`
+		MaxQueryTerms            float64 `env:"ES_MAX_QUERY_TERMS" envDefault:"50"`
 	}
 )
 

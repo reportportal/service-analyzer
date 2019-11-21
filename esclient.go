@@ -584,7 +584,7 @@ func (c *client) buildSearchQuery(request SearchLogs, logMessage string) interfa
 	q.Query.Bool.Must = append(q.Query.Bool.Must, Condition{
 		Terms: map[string][]int64{"launch_id": request.FilteredLaunchIds},
 	})
-	q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, 50, c.searchCfg.SearchLogsMinShouldMatch, logMessage))
+	q.Query.Bool.Must = append(q.Query.Bool.Must, c.buildMoreLikeThis(1, 1, c.searchCfg.MaxQueryTerms, c.searchCfg.SearchLogsMinShouldMatch, logMessage))
 
 	return q
 }

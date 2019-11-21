@@ -248,11 +248,11 @@ func (c *client) CreateIndex(name string) (*Response, error) {
 			"analysis": map[string]interface{}{
 				"analyzer": map[string]interface{}{
 					"standard_english_analyzer": map[string]interface{}{
-						"type": "standard",
-						"stopwords": "_english_"
-					}
-				}
-			}
+						"type":      "standard",
+						"stopwords": "_english_",
+					},
+				},
+			},
 		},
 		"mappings": map[string]interface{}{
 			"properties": map[string]interface{}{
@@ -340,7 +340,7 @@ func (c *client) IndexLogs(launches []Launch) (*BulkResponse, error) {
 			for _, l := range ti.Logs {
 
 				if l.LogLevel < ErrorLoggingLevel {
-					continue;
+					continue
 				}
 
 				op := map[string]interface{}{
@@ -394,7 +394,7 @@ func (c *client) AnalyzeLogs(launches []Launch) ([]AnalysisResult, error) {
 			for _, l := range ti.Logs {
 
 				if l.LogLevel < ErrorLoggingLevel {
-					continue;
+					continue
 				}
 
 				message := c.sanitizeText(firstLines(l.Message, lc.Conf.LogLines))
@@ -596,8 +596,8 @@ func (c *client) buildMoreLikeThis(minDocFreq, minTermFreq, maxQueryTerms float6
 			Like:           logMessage,
 			MinDocFreq:     minDocFreq,
 			MinTermFreq:    minTermFreq,
-			MinShouldMatch: "5<"+minShouldMatch,
-			MaxQueryTerms:  maxQueryTerms
+			MinShouldMatch: "5<" + minShouldMatch,
+			MaxQueryTerms:  maxQueryTerms,
 		},
 	}
 }

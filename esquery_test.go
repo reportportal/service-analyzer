@@ -32,7 +32,7 @@ var _ = Describe("ES Query Struct", func() {
 			BoostAA:        10,
 			BoostLaunch:    5,
 			BoostUniqueID:  3,
-			MaxQueryTerms:  50
+			MaxQueryTerms:  50,
 		}
 
 		c := &client{searchCfg: cfg}
@@ -85,8 +85,8 @@ func buildDemoQuery(searchCfg *SearchConfig, mode SearchMode, launchName, unique
 							"like":                 logMessage,
 							"min_doc_freq":         searchCfg.MinDocFreq,
 							"min_term_freq":        searchCfg.MinTermFreq,
-							"minimum_should_match": "5<"+searchCfg.MinShouldMatch,
-							"max_query_terms":      searchCfg.MaxQueryTerms
+							"minimum_should_match": "5<" + searchCfg.MinShouldMatch,
+							"max_query_terms":      searchCfg.MaxQueryTerms,
 						},
 					},
 				},

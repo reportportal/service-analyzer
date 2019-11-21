@@ -29,24 +29,24 @@ import (
 )
 
 const (
-	TwoIndicesRs           = "two_indices_rs.json"
-	IndexCreatedRs         = "index_created_rs.json"
-	IndexAlreadyExistsRs   = "index_already_exists_rs.json"
-	IndexDeletedRs         = "index_deleted_rs.json"
-	IndexNotFoundRs        = "index_not_found_rs.json"
-	LaunchWoTestItems      = "launch_wo_test_items.json"
-	LaunchWTestItemsWoLogs = "launch_w_test_items_wo_logs.json"
-	LaunchWTestItemsWLogs  = "launch_w_test_items_w_logs.json"
-	IndexLogsRq            = "index_logs_rq.json"
-	IndexLogsRs            = "index_logs_rs.json"
-	SearchRq               = "search_rq.json"
-	NoHitsSearchRs         = "no_hits_search_rs.json"
-	OneHitSearchRs         = "one_hit_search_rs.json"
-	TwoHitsSearchRs        = "two_hits_search_rs.json"
-	ThreeHitsSearchRs      = "three_hits_search_rs.json"
-	LaunchWTestItemsWLogsDifferentLogLevel  = "launch_w_test_items_w_logs_different_log_level.json"
-	IndexLogsRqDifferentLogLevel            = "index_logs_rq_different_log_level.json"
-	IndexLogsRsDifferentLogLevel            = "index_logs_rs_different_log_level.json"
+	TwoIndicesRs                           = "two_indices_rs.json"
+	IndexCreatedRs                         = "index_created_rs.json"
+	IndexAlreadyExistsRs                   = "index_already_exists_rs.json"
+	IndexDeletedRs                         = "index_deleted_rs.json"
+	IndexNotFoundRs                        = "index_not_found_rs.json"
+	LaunchWoTestItems                      = "launch_wo_test_items.json"
+	LaunchWTestItemsWoLogs                 = "launch_w_test_items_wo_logs.json"
+	LaunchWTestItemsWLogs                  = "launch_w_test_items_w_logs.json"
+	IndexLogsRq                            = "index_logs_rq.json"
+	IndexLogsRs                            = "index_logs_rs.json"
+	SearchRq                               = "search_rq.json"
+	NoHitsSearchRs                         = "no_hits_search_rs.json"
+	OneHitSearchRs                         = "one_hit_search_rs.json"
+	TwoHitsSearchRs                        = "two_hits_search_rs.json"
+	ThreeHitsSearchRs                      = "three_hits_search_rs.json"
+	LaunchWTestItemsWLogsDifferentLogLevel = "launch_w_test_items_w_logs_different_log_level.json"
+	IndexLogsRqDifferentLogLevel           = "index_logs_rq_different_log_level.json"
+	IndexLogsRsDifferentLogLevel           = "index_logs_rs_different_log_level.json"
 )
 
 type ServerCall struct {
@@ -334,7 +334,7 @@ func TestIndexLogs(t *testing.T) {
 				},
 			},
 			indexRq: getFixture(LaunchWTestItemsWLogsDifferentLogLevel),
-		}
+		},
 	}
 
 	for _, test := range tests {
@@ -475,7 +475,7 @@ func TestAnalyzeLogs(t *testing.T) {
 					rq:     getFixture(SearchRq),
 					rs:     getFixture(TwoHitsSearchRs),
 					status: http.StatusOK,
-				}
+				},
 			},
 			analyzeRq:     getFixture(LaunchWTestItemsWLogsDifferentLogLevel),
 			expectedIssue: "AB001",

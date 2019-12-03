@@ -17,7 +17,7 @@ podTemplate(
                         resourceRequestMemory: '2048Mi',
                         resourceLimitMemory: '2048Mi'),
                 containerTemplate(name: 'kubectl', image: 'lachlanevenson/k8s-kubectl:v1.8.8', command: 'cat', ttyEnabled: true),
-                containerTemplate(name: 'helm', image: 'lachlanevenson/k8s-helm:v2.14.2', command: 'cat', ttyEnabled: true,
+                containerTemplate(name: 'helm', image: 'lachlanevenson/k8s-helm:v3.0.0', command: 'cat', ttyEnabled: true,
                         resourceRequestCpu: '300m',
                         resourceLimitCpu: '500m',
                         resourceRequestMemory: '128Mi',

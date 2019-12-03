@@ -20,6 +20,8 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/pkg/errors"
 	"github.com/reportportal/commons-go/commons"
+	"github.com/reportportal/commons-go/conf"
+	"github.com/reportportal/commons-go/server"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"github.com/x-cray/logrus-prefixed-formatter"
@@ -47,6 +49,7 @@ func init() {
 type (
 	//AppConfig is the application configuration
 	AppConfig struct {
+		ServerConfig *conf.ServerConfig
 		*SearchConfig
 		//ESHosts  []string `env:"ES_HOSTS" envDefault:"http://localhost:9200"`
 		ESHosts  []string `env:"ES_HOSTS" envDefault:"http://elasticsearch:9200"`
@@ -87,6 +90,7 @@ func main() {
 			NewRequestHandler,
 
 			newAmqpConnection,
+			newServer,
 		),
 		// Since constructors are called lazily, we need some invocations to
 		// kick-start our application. In this case, we'll use Register. Since it
@@ -94,7 +98,7 @@ func main() {
 		// to build those types using the constructors above. Since we call
 		// NewMux, we also register Lifecycle hooks to start and stop an HTTP
 		// server.
-		fx.Invoke(initLogger, initAmqp),
+		fx.Invoke(initLogger, initAmqp, runServer),
 	)
 
 	app.Run()
@@ -116,6 +120,7 @@ func initLogger(cfg *AppConfig) {
 func newConfig() (*AppConfig, error) {
 	cfg := &AppConfig{
 		SearchConfig: &SearchConfig{},
+		ServerConfig: conf.EmptyConfig(),
 	}
 
 	return cfg, env.Parse(cfg)
@@ -282,4 +287,19 @@ func initAmqp(lc fx.Lifecycle, client *AmqpClient, h *RequestHandler, cfg *AppCo
 	}()
 
 	return nil
+}
+
+func newServer(cfg *AppConfig) *server.RpServer {
+	info := commons.GetBuildInfo()
+	info.Name = "Analysis Service"
+	srv := server.New(cfg.ServerConfig, info)
+	return srv
+}
+func runServer(lc fx.Lifecycle, srv *server.RpServer) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			go srv.StartServer()
+			return nil
+		},
+	})
 }

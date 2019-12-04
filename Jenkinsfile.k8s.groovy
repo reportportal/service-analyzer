@@ -115,7 +115,7 @@ podTemplate(
         stage('DVT Test') {
             def srvUrl
             container('kubectl') {
-                srvUrl = utils.getServiceEndpoint("reportportal", "analyzer-0")
+                srvUrl = utils.getServiceEndpoint("reportportal", "reportportal-analyzer")
             }
             if (srvUrl == null) {
                 error("Unable to retrieve service URL")

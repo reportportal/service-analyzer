@@ -17,7 +17,7 @@ node {
                         sh """
                             MAJOR_VER=\$(cat VERSION)
                             BUILD_VER="\${MAJOR_VER}-${env.BUILD_NUMBER}"
-                            make get-build-deps build build-image-dev v=\$BUILD_VER
+                            make build-image-dev v=\$BUILD_VER
                         """
                     }
 

@@ -90,7 +90,7 @@ podTemplate(
             }
             container('docker') {
                 stage('Build Image') {
-                    sh "docker build -t $tag --build-arg version=`cat VERSION`-${env.BUILD_NUMBER} -f DockerfileDev ."
+                    sh "docker build -t $tag --build-arg version=`cat VERSION`-${env.BUILD_NUMBER} -f Dockerfile.k8s ."
                 }
                 stage('Push Image') {
                     sh "docker push $tag"

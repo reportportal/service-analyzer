@@ -1,0 +1,12 @@
+FROM alpine:latest
+
+MAINTAINER Andrei Varabyeu <andrei_varabyeu@epam.com>
+LABEL quay.expires-after=1w
+
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+
+ADD ./bin/service-analyzer /
+
+EXPOSE 8080
+ENTRYPOINT ["/service-analyzer"]

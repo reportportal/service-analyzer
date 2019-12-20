@@ -1,4 +1,6 @@
 linters-settings:
+  funlen:
+    lines: 150
   govet:
     check-shadowing: true
   golint:
@@ -36,7 +38,6 @@ linters-settings:
 linters:
   enable-all: true
   disable:
-    - funlen
     - maligned
     - prealloc
     - gochecknoglobals

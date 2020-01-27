@@ -70,7 +70,6 @@ podTemplate(
                 }
             }
         }
-        def test = load "${ciDir}/jenkins/scripts/test.groovy"
         def utils = load "${ciDir}/jenkins/scripts/util.groovy"
         def helm = load "${ciDir}/jenkins/scripts/helm.groovy"
         def docker = load "${ciDir}/jenkins/scripts/docker.groovy"
@@ -99,31 +98,13 @@ podTemplate(
         }
 
         stage('Deploy to Dev') {
-            container('helm') {
-                // def valsFile = "merged.yml"
-                // container('yq') {
-                //     sh "yq m -x $k8sChartDir/values.yaml $ciDir/rp/values-ci.yml > $valsFile"
-                // }
-
-                dir(k8sChartDir) {
-                    sh 'helm dependency update'
-                }
-                sh "helm upgrade --reuse-values -n reportportal --set serviceanalyzer.repository=$srvRepo --set serviceanalyzer.tag=$srvVersion --wait reportportal ./$k8sChartDir"
-            }
+            helm.deploy("./$k8sChartDir", ["serviceanalyzer.repository": srvRepo, "serviceanalyzer.tag": srvVersion], false) // with wait
         }
 
         stage('DVT Test') {
-            def srvUrl
-            container('kubectl') {
-                srvUrl = utils.getServiceEndpoint("reportportal", "reportportal-analyzer")
-            }
-            if (srvUrl == null) {
-                error("Unable to retrieve service URL")
-            }
-            container('httpie') {
-                test.checkVersion("http://$srvUrl", "$srvVersion")
-            }
+            helm.testDeployment("reportportal", "reportportal-analyzer", "$srvVersion")
         }
+
     }
 }
 
